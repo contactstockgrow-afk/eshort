@@ -34,40 +34,42 @@ class NotificationsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            launch {
-                socialRepository.getNotifications().fold(
-                    onSuccess = { (notifications, _) ->
-                        _uiState.update { it.copy(notifications = notifications) }
-                    },
-                    onFailure = { }
-                )
-            }
+            kotlinx.coroutines.coroutineScope {
+                launch {
+                    socialRepository.getNotifications().fold(
+                        onSuccess = { (notifications, _) ->
+                            _uiState.update { it.copy(notifications = notifications) }
+                        },
+                        onFailure = { }
+                    )
+                }
 
-            launch {
-                socialRepository.getUnreadCount().fold(
-                    onSuccess = { count ->
-                        _uiState.update { it.copy(unreadCount = count) }
-                    },
-                    onFailure = { }
-                )
-            }
+                launch {
+                    socialRepository.getUnreadCount().fold(
+                        onSuccess = { count ->
+                            _uiState.update { it.copy(unreadCount = count) }
+                        },
+                        onFailure = { }
+                    )
+                }
 
-            launch {
-                socialRepository.getPendingFriendRequests().fold(
-                    onSuccess = { requests ->
-                        _uiState.update { it.copy(pendingRequests = requests) }
-                    },
-                    onFailure = { }
-                )
-            }
+                launch {
+                    socialRepository.getPendingFriendRequests().fold(
+                        onSuccess = { requests ->
+                            _uiState.update { it.copy(pendingRequests = requests) }
+                        },
+                        onFailure = { }
+                    )
+                }
 
-            launch {
-                socialRepository.getFriends().fold(
-                    onSuccess = { friends ->
-                        _uiState.update { it.copy(friends = friends) }
-                    },
-                    onFailure = { }
-                )
+                launch {
+                    socialRepository.getFriends().fold(
+                        onSuccess = { friends ->
+                            _uiState.update { it.copy(friends = friends) }
+                        },
+                        onFailure = { }
+                    )
+                }
             }
 
             _uiState.update { it.copy(isLoading = false) }

@@ -70,7 +70,7 @@ async function uploadVideo(req, res) {
 
     const { caption, hashtags, isPrivate } = req.body;
     const parsedHashtags = hashtags
-      ? (typeof hashtags === 'string' ? JSON.parse(hashtags) : hashtags)
+      ? (typeof hashtags === 'string' ? hashtags.split(',').map(t => t.trim()).filter(Boolean) : hashtags)
       : [];
 
     const videoData = {

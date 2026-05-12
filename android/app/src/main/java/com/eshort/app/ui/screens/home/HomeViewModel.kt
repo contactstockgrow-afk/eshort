@@ -69,21 +69,41 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true) }
 
-            videoRepository.getForYouFeed(cursor = state.nextCursor).fold(
-                onSuccess = { (videos, pagination) ->
-                    _uiState.update {
-                        it.copy(
-                            videos = it.videos + videos,
-                            isLoadingMore = false,
-                            nextCursor = pagination?.nextCursor,
-                            hasMore = pagination?.hasMore ?: false
-                        )
-                    }
-                },
-                onFailure = {
-                    _uiState.update { it.copy(isLoadingMore = false) }
+            when (state.currentFeed) {
+                FeedType.FOR_YOU -> {
+                    videoRepository.getForYouFeed(cursor = state.nextCursor).fold(
+                        onSuccess = { (videos, pagination) ->
+                            _uiState.update {
+                                it.copy(
+                                    videos = it.videos + videos,
+                                    isLoadingMore = false,
+                                    nextCursor = pagination?.nextCursor,
+                                    hasMore = pagination?.hasMore ?: false
+                                )
+                            }
+                        },
+                        onFailure = {
+                            _uiState.update { it.copy(isLoadingMore = false) }
+                        }
+                    )
                 }
-            )
+                FeedType.FOLLOWING -> {
+                    videoRepository.getFollowingFeed().fold(
+                        onSuccess = { videos ->
+                            _uiState.update {
+                                it.copy(
+                                    videos = it.videos + videos,
+                                    isLoadingMore = false,
+                                    hasMore = false
+                                )
+                            }
+                        },
+                        onFailure = {
+                            _uiState.update { it.copy(isLoadingMore = false) }
+                        }
+                    )
+                }
+            }
         }
     }
 

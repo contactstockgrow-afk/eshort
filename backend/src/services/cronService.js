@@ -17,25 +17,27 @@ async function updateTrendingScores() {
       .where('status', '==', 'active')
       .get();
 
-    const batch = db.batch();
     const now = Date.now();
+    const docs = snapshot.docs;
+    for (let i = 0; i < docs.length; i += 499) {
+      const batch = db.batch();
+      const chunk = docs.slice(i, i + 499);
+      chunk.forEach((doc) => {
+        const data = doc.data();
+        const ageHours = (now - new Date(data.createdAt).getTime()) / (1000 * 60 * 60);
+        const decayFactor = Math.max(0.1, 1 - ageHours / 168);
 
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      const ageHours = (now - new Date(data.createdAt).getTime()) / (1000 * 60 * 60);
-      const decayFactor = Math.max(0.1, 1 - ageHours / 168);
+        const score =
+          (data.viewsCount || 0) * 1 +
+          (data.likesCount || 0) * 3 +
+          (data.commentsCount || 0) * 5 +
+          (data.sharesCount || 0) * 7;
 
-      const score =
-        (data.viewsCount || 0) * 1 +
-        (data.likesCount || 0) * 3 +
-        (data.commentsCount || 0) * 5 +
-        (data.sharesCount || 0) * 7;
-
-      const trendingScore = Math.round(score * decayFactor);
-      batch.update(doc.ref, { trendingScore });
-    });
-
-    await batch.commit();
+        const trendingScore = Math.round(score * decayFactor);
+        batch.update(doc.ref, { trendingScore });
+      });
+      await batch.commit();
+    }
     logger.info('Trending scores updated');
   } catch (err) {
     logger.error('Update trending scores error:', err);
@@ -69,18 +71,21 @@ async function updateHashtagCounts() {
     const db = getFirestore();
     const hashtags = await db.collection('hashtags').get();
 
-    const batch = db.batch();
-    for (const doc of hashtags.docs) {
-      const tag = doc.data().tag;
-      const videos = await db.collection('videos')
-        .where('status', '==', 'active')
-        .where('hashtags', 'array-contains', tag)
-        .get();
+    const docs = hashtags.docs;
+    for (let i = 0; i < docs.length; i += 499) {
+      const batch = db.batch();
+      const chunk = docs.slice(i, i + 499);
+      for (const doc of chunk) {
+        const tag = doc.data().tag;
+        const videos = await db.collection('videos')
+          .where('status', '==', 'active')
+          .where('hashtags', 'array-contains', tag)
+          .get();
 
-      batch.update(doc.ref, { count: videos.size });
+        batch.update(doc.ref, { count: videos.size });
+      }
+      await batch.commit();
     }
-
-    await batch.commit();
     logger.info('Hashtag counts updated');
   } catch (err) {
     logger.error('Update hashtag counts error:', err);

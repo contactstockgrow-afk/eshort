@@ -67,6 +67,10 @@ async function getUnreadCount(req, res) {
 async function markAsRead(req, res) {
   try {
     const db = getFirestore();
+    const doc = await db.collection('notifications').doc(req.params.notificationId).get();
+    if (!doc.exists) return error(res, 'Notification not found', 404);
+    if (doc.data().userId !== req.user.uid) return error(res, 'Unauthorized', 403);
+
     await db.collection('notifications').doc(req.params.notificationId).update({
       read: true,
       readAt: new Date().toISOString(),
