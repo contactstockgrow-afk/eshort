@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>eShort Admin Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0A0A0A; --surface: #141414; --surface-variant: #1E1E1E;
+            --accent: #FF2D55; --blue: #007AFF; --text: #FFF; --text-sec: #AAA; --text-ter: #666;
+            --border: #2A2A2A; --green: #34C759; --orange: #FF9500; --red: #FF3B30;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); }
+        .app { display: flex; min-height: 100vh; }
+        .sidebar { width: 240px; background: var(--surface); border-right: 1px solid var(--border); padding: 24px 16px; position: fixed; height: 100vh; overflow-y: auto; }
+        .sidebar .logo { font-size: 24px; font-weight: 700; color: var(--accent); margin-bottom: 32px; }
+        .sidebar .logo span { color: var(--text); }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; color: var(--text-sec); cursor: pointer; margin-bottom: 4px; transition: all 0.2s; font-size: 14px; text-decoration: none; }
+        .nav-item:hover, .nav-item.active { background: var(--surface-variant); color: var(--text); }
+        .nav-item.active { border-left: 3px solid var(--accent); }
+        .main { margin-left: 240px; flex: 1; padding: 32px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
+        .header h1 { font-size: 28px; font-weight: 700; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 32px; }
+        .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }
+        .stat-card .label { font-size: 13px; color: var(--text-sec); margin-bottom: 8px; }
+        .stat-card .value { font-size: 32px; font-weight: 700; }
+        .stat-card .change { font-size: 12px; margin-top: 8px; }
+        .stat-card .change.up { color: var(--green); }
+        .stat-card .change.down { color: var(--red); }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; margin-bottom: 24px; }
+        .card h3 { font-size: 16px; margin-bottom: 16px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 13px; }
+        th { color: var(--text-sec); font-weight: 600; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .badge.active { background: rgba(52, 199, 89, 0.15); color: var(--green); }
+        .badge.pending { background: rgba(255, 149, 0, 0.15); color: var(--orange); }
+        .badge.banned { background: rgba(255, 59, 48, 0.15); color: var(--red); }
+        .btn { padding: 8px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+        .btn:hover { opacity: 0.8; }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-secondary { background: var(--surface-variant); color: var(--text); }
+        .btn-danger { background: var(--red); color: white; }
+        .section-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
+        @media (max-width: 768px) { .sidebar { display: none; } .main { margin-left: 0; } }
+    </style>
+</head>
+<body>
+<div class="app">
+    <aside class="sidebar">
+        <div class="logo">e<span>Short</span></div>
+        <nav>
+            <a class="nav-item active" onclick="showSection('dashboard')">Dashboard</a>
+            <a class="nav-item" onclick="showSection('users')">Users</a>
+            <a class="nav-item" onclick="showSection('videos')">Videos</a>
+            <a class="nav-item" onclick="showSection('reports')">Reports</a>
+            <a class="nav-item" onclick="showSection('analytics')">Analytics</a>
+            <a class="nav-item" onclick="showSection('uploads')">Uploads</a>
+            <a class="nav-item" onclick="showSection('notifications')">Notifications</a>
+            <a class="nav-item" onclick="showSection('settings')">Settings</a>
+        </nav>
+    </aside>
+
+    <main class="main">
+        <div id="dashboard-section">
+            <div class="header"><h1>Dashboard</h1></div>
+            <div class="stats-grid">
+                <div class="stat-card"><div class="label">Total Users</div><div class="value" id="total-users">-</div><div class="change up">Active platform</div></div>
+                <div class="stat-card"><div class="label">Total Videos</div><div class="value" id="total-videos">-</div><div class="change up">Content growing</div></div>
+                <div class="stat-card"><div class="label">Pending Reports</div><div class="value" id="pending-reports">-</div><div class="change">Needs review</div></div>
+                <div class="stat-card"><div class="label">New Users Today</div><div class="value" id="new-today">-</div><div class="change up">Daily growth</div></div>
+            </div>
+            <div class="card"><h3>Recent Activity</h3><p style="color: var(--text-sec)">Connect to the backend API to view live data.</p></div>
+        </div>
+
+        <div id="users-section" style="display:none">
+            <div class="header"><h1>Users</h1></div>
+            <div class="card">
+                <table><thead><tr><th>User</th><th>Username</th><th>Email</th><th>Status</th><th>Role</th><th>Actions</th></tr></thead>
+                <tbody id="users-table"><tr><td colspan="6" style="color:var(--text-sec)">Loading users...</td></tr></tbody></table>
+            </div>
+        </div>
+
+        <div id="videos-section" style="display:none">
+            <div class="header"><h1>Videos</h1></div>
+            <div class="card">
+                <table><thead><tr><th>Video ID</th><th>Creator</th><th>Caption</th><th>Views</th><th>Likes</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody id="videos-table"><tr><td colspan="7" style="color:var(--text-sec)">Loading videos...</td></tr></tbody></table>
+            </div>
+        </div>
+
+        <div id="reports-section" style="display:none">
+            <div class="header"><h1>Reports</h1></div>
+            <div class="card">
+                <table><thead><tr><th>Report ID</th><th>Reporter</th><th>Target</th><th>Type</th><th>Reason</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody id="reports-table"><tr><td colspan="7" style="color:var(--text-sec)">Loading reports...</td></tr></tbody></table>
+            </div>
+        </div>
+
+        <div id="analytics-section" style="display:none">
+            <div class="header"><h1>Analytics</h1></div>
+            <div class="stats-grid">
+                <div class="stat-card"><div class="label">New Users (30d)</div><div class="value" id="analytics-users">-</div></div>
+                <div class="stat-card"><div class="label">New Videos (30d)</div><div class="value" id="analytics-videos">-</div></div>
+                <div class="stat-card"><div class="label">Total Views (30d)</div><div class="value" id="analytics-views">-</div></div>
+            </div>
+        </div>
+
+        <div id="uploads-section" style="display:none">
+            <div class="header"><h1>Upload Activity</h1></div>
+            <div class="card">
+                <table><thead><tr><th>Upload ID</th><th>User</th><th>Status</th><th>Progress</th><th>Date</th></tr></thead>
+                <tbody id="uploads-table"><tr><td colspan="5" style="color:var(--text-sec)">Loading uploads...</td></tr></tbody></table>
+            </div>
+        </div>
+
+        <div id="notifications-section" style="display:none">
+            <div class="header"><h1>Notification Controls</h1></div>
+            <div class="card"><h3>Push Notification Management</h3><p style="color:var(--text-sec)">Configure push notifications, templates, and delivery rules.</p></div>
+        </div>
+
+        <div id="settings-section" style="display:none">
+            <div class="header"><h1>Settings</h1></div>
+            <div class="card"><h3>Platform Settings</h3><p style="color:var(--text-sec)">API configuration, Firebase settings, storage management.</p></div>
+        </div>
+    </main>
+</div>
+
+<script>
+const API_BASE = 'http://localhost:3000/api';
+function showSection(name) {
+    document.querySelectorAll('[id$="-section"]').forEach(s => s.style.display = 'none');
+    document.getElementById(name + '-section').style.display = 'block';
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    event.target.classList.add('active');
+}
+</script>
+</body>
+</html>

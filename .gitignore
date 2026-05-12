@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+.npm
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Logs
+logs/
+*.log
+
+# Build
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/app/google-services.json
+*.apk
+*.aab
+
+# Firebase
+firebase-debug.log
+.firebase/
+
+# Coverage
+coverage/
+
+# Temp
+*.tmp
+*.swp
