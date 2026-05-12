@@ -36,6 +36,7 @@ android/app/google-services.json
 # Firebase
 firebase-debug.log
 .firebase/
+**/serviceAccountKey.json
 
 # Coverage
 coverage/
