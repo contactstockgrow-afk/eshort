@@ -61,13 +61,7 @@ fun NotificationsScreen(
             selectedTabIndex = selectedTab,
             containerColor = DarkBackground,
             contentColor = Color.White,
-            indicator = { tabPositions ->
-                TabRowDefaults.SecondaryIndicator(
-                    modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                    color = AccentPink
-                )
-            },
-            divider = { HorizontalDivider(color = DividerColor) }
+            divider = { Divider(color = DividerColor) }
         ) {
             Tab(
                 selected = selectedTab == 0,

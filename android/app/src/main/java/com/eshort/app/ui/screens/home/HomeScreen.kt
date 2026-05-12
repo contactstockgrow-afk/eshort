@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.eshort.app.data.model.Video
+import com.eshort.app.ui.components.VideoPlayer
 import com.eshort.app.ui.theme.*
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -82,6 +83,7 @@ fun HomeScreen(
             ) { page ->
                 VideoCard(
                     video = uiState.videos[page],
+                    isPlaying = pagerState.currentPage == page,
                     onLike = { viewModel.likeVideo(uiState.videos[page].id) },
                     onComment = { },
                     onShare = { viewModel.shareVideo(uiState.videos[page].id) },
@@ -142,6 +144,7 @@ fun FeedTab(text: String, isSelected: Boolean, onClick: () -> Unit) {
 @Composable
 fun VideoCard(
     video: Video,
+    isPlaying: Boolean = false,
     onLike: () -> Unit,
     onComment: () -> Unit,
     onShare: () -> Unit,
@@ -163,13 +166,20 @@ fun VideoCard(
                 )
             }
     ) {
-        // Video thumbnail placeholder
-        AsyncImage(
-            model = video.thumbnailUrl.ifEmpty { video.videoDirectUrl },
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
+        if (video.videoUrl.isNotEmpty()) {
+            VideoPlayer(
+                videoUrl = video.videoUrl,
+                isVisible = isPlaying,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            AsyncImage(
+                model = video.thumbnailUrl.ifEmpty { video.videoDirectUrl },
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        }
 
         // Gradient overlay at bottom
         Box(

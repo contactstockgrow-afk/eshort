@@ -1,6 +1,5 @@
 const { getFirestore, getAuth } = require('../config/firebase');
-const { getAuthUrl, setCredentials, createFolderStructure, getOAuth2Client } = require('../config/drive');
-const { google } = require('googleapis');
+const { getFolderIds } = require('../config/drive');
 const { success, error } = require('../utils/response');
 const { logger } = require('../utils/logger');
 
@@ -36,8 +35,8 @@ async function register(req, res) {
       isVerified: false,
       isBanned: false,
       isPrivate: false,
-      driveConnected: false,
-      driveFolders: null,
+      driveConnected: true,
+      driveFolders: getFolderIds(),
       fcmTokens: [],
       notificationSettings: {
         likes: true,
@@ -77,6 +76,8 @@ async function googleSignIn(req, res) {
       }
       await db.collection('users').doc(uid).update({
         lastLoginAt: new Date().toISOString(),
+        driveConnected: true,
+        driveFolders: getFolderIds(),
       });
       return success(res, { user: userData, isNewUser: false });
     }
@@ -85,48 +86,6 @@ async function googleSignIn(req, res) {
   } catch (err) {
     logger.error('Google sign-in error:', err);
     return error(res, 'Sign-in failed');
-  }
-}
-
-async function getDriveAuthUrl(req, res) {
-  try {
-    const url = getAuthUrl(req.user.uid);
-    return success(res, { authUrl: url });
-  } catch (err) {
-    logger.error('Drive auth URL error:', err);
-    return error(res, 'Failed to generate Drive auth URL');
-  }
-}
-
-async function handleDriveCallback(req, res) {
-  try {
-    const { code, state: uid } = req.query;
-    const db = getFirestore();
-
-    const oAuth2Client = getOAuth2Client();
-    const { tokens } = await oAuth2Client.getToken(code);
-
-    await db.collection('users').doc(uid).update({
-      driveTokens: tokens,
-      driveConnected: true,
-      updatedAt: new Date().toISOString(),
-    });
-
-    const userAuth = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      process.env.GOOGLE_REDIRECT_URI
-    );
-    userAuth.setCredentials(tokens);
-
-    const folders = await createFolderStructure(userAuth);
-    await db.collection('users').doc(uid).update({ driveFolders: folders });
-
-    logger.info(`Drive connected for user: ${uid}`);
-    res.send('<html><body><h2>Google Drive connected successfully!</h2><p>You can close this window.</p></body></html>');
-  } catch (err) {
-    logger.error('Drive callback error:', err);
-    res.status(500).send('<html><body><h2>Failed to connect Google Drive</h2></body></html>');
   }
 }
 
@@ -140,7 +99,6 @@ async function getCurrentUser(req, res) {
     }
 
     const userData = userDoc.data();
-    delete userData.driveTokens;
     delete userData.fcmTokens;
 
     return success(res, { user: userData });
@@ -214,8 +172,6 @@ async function logout(req, res) {
 module.exports = {
   register,
   googleSignIn,
-  getDriveAuthUrl,
-  handleDriveCallback,
   getCurrentUser,
   updateProfile,
   updateFcmToken,

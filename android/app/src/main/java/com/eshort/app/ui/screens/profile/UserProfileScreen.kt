@@ -161,7 +161,7 @@ fun UserProfileScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            HorizontalDivider(color = DividerColor)
+            Divider(color = DividerColor)
 
             if (uiState.videos.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
