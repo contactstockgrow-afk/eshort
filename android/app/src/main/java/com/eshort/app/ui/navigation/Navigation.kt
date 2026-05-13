@@ -1,6 +1,5 @@
 package com.eshort.app.ui.navigation
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -78,18 +77,24 @@ fun EShortNavHost() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = if (isLoggedIn) Screen.Home.route else Screen.Auth.route,
+            startDestination = Screen.Auth.route,
             modifier = Modifier.padding(
                 bottom = if (showBottomBar && isLoggedIn) innerPadding.calculateBottomPadding() else 0.dp
             )
         ) {
             composable(Screen.Auth.route) {
                 AuthScreen(
-                    onNavigateToRegister = { navController.navigate(Screen.Register.route) },
+                    onNavigateToRegister = {
+                        try {
+                            navController.navigate(Screen.Register.route)
+                        } catch (_: Exception) {}
+                    },
                     onSignInSuccess = {
-                        navController.navigate(Screen.Home.route) {
-                            popUpTo(Screen.Auth.route) { inclusive = true }
-                        }
+                        try {
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(Screen.Auth.route) { inclusive = true }
+                            }
+                        } catch (_: Exception) {}
                     }
                 )
             }
@@ -97,18 +102,26 @@ fun EShortNavHost() {
             composable(Screen.Register.route) {
                 RegisterScreen(
                     onRegisterSuccess = {
-                        navController.navigate(Screen.Home.route) {
-                            popUpTo(Screen.Auth.route) { inclusive = true }
-                        }
+                        try {
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(Screen.Auth.route) { inclusive = true }
+                            }
+                        } catch (_: Exception) {}
                     },
-                    onBack = { navController.popBackStack() }
+                    onBack = {
+                        try {
+                            navController.popBackStack()
+                        } catch (_: Exception) {}
+                    }
                 )
             }
 
             composable(Screen.Home.route) {
                 HomeScreen(
                     onNavigateToProfile = { userId ->
-                        navController.navigate(Screen.UserProfile.createRoute(userId))
+                        try {
+                            navController.navigate(Screen.UserProfile.createRoute(userId))
+                        } catch (_: Exception) {}
                     }
                 )
             }
@@ -116,7 +129,9 @@ fun EShortNavHost() {
             composable(Screen.Search.route) {
                 SearchScreen(
                     onNavigateToProfile = { userId ->
-                        navController.navigate(Screen.UserProfile.createRoute(userId))
+                        try {
+                            navController.navigate(Screen.UserProfile.createRoute(userId))
+                        } catch (_: Exception) {}
                     }
                 )
             }
@@ -124,9 +139,11 @@ fun EShortNavHost() {
             composable(Screen.Upload.route) {
                 UploadScreen(
                     onUploadComplete = {
-                        navController.navigate(Screen.Home.route) {
-                            popUpTo(Screen.Home.route) { inclusive = true }
-                        }
+                        try {
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(Screen.Home.route) { inclusive = true }
+                            }
+                        } catch (_: Exception) {}
                     }
                 )
             }
@@ -134,7 +151,9 @@ fun EShortNavHost() {
             composable(Screen.Notifications.route) {
                 NotificationsScreen(
                     onNavigateToProfile = { userId ->
-                        navController.navigate(Screen.UserProfile.createRoute(userId))
+                        try {
+                            navController.navigate(Screen.UserProfile.createRoute(userId))
+                        } catch (_: Exception) {}
                     }
                 )
             }
@@ -142,9 +161,11 @@ fun EShortNavHost() {
             composable(Screen.Profile.route) {
                 ProfileScreen(
                     onSignOut = {
-                        navController.navigate(Screen.Auth.route) {
-                            popUpTo(0) { inclusive = true }
-                        }
+                        try {
+                            navController.navigate(Screen.Auth.route) {
+                                popUpTo(0) { inclusive = true }
+                            }
+                        } catch (_: Exception) {}
                     }
                 )
             }
@@ -153,7 +174,11 @@ fun EShortNavHost() {
                 val userId = backStackEntry.arguments?.getString("userId") ?: ""
                 UserProfileScreen(
                     userId = userId,
-                    onBack = { navController.popBackStack() }
+                    onBack = {
+                        try {
+                            navController.popBackStack()
+                        } catch (_: Exception) {}
+                    }
                 )
             }
         }
@@ -187,13 +212,15 @@ fun EShortBottomBar(navController: NavHostController, currentRoute: String?) {
                 selected = isSelected,
                 onClick = {
                     if (currentRoute != item.screen.route) {
-                        navController.navigate(item.screen.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
+                        try {
+                            navController.navigate(item.screen.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
                             }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
+                        } catch (_: Exception) {}
                     }
                 },
                 colors = NavigationBarItemDefaults.colors(

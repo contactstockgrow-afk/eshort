@@ -53,18 +53,26 @@ class AuthRepository @Inject constructor(
         }
     }
 
-    fun signInAsGuest(): Result<User> {
-        val guestId = "guest_${System.currentTimeMillis()}"
-        val user = User(
-            uid = guestId,
-            email = "",
-            displayName = "Guest User",
-            username = "guest_${guestId.takeLast(6)}",
-            bio = "Browsing as guest"
-        )
-        _currentUser.value = user
-        _isLoggedIn.value = true
-        return Result.success(user)
+    suspend fun signInAsGuest(): Result<User> {
+        return try {
+            val authResult = firebaseAuth.signInAnonymously().await()
+            val fbUser = authResult.user
+                ?: return Result.failure(Exception("Anonymous auth failed"))
+
+            val user = User(
+                uid = fbUser.uid,
+                email = "",
+                displayName = "Guest User",
+                username = "guest_${fbUser.uid.take(8)}",
+                bio = "Browsing as guest"
+            )
+            _currentUser.value = user
+            _isLoggedIn.value = true
+            Result.success(user)
+        } catch (e: Exception) {
+            Log.e("AuthRepository", "Guest sign-in failed", e)
+            Result.failure(e)
+        }
     }
 
     private suspend fun syncWithBackend(uid: String) {

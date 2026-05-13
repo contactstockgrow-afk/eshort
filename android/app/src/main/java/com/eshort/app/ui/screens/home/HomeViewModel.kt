@@ -1,11 +1,13 @@
 package com.eshort.app.ui.screens.home
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eshort.app.data.model.Comment
 import com.eshort.app.data.model.Video
 import com.eshort.app.data.repository.VideoRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -34,12 +36,17 @@ class HomeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    private val handler = CoroutineExceptionHandler { _, e ->
+        Log.e("HomeViewModel", "Coroutine error", e)
+        _uiState.update { it.copy(isLoading = false, isLoadingMore = false) }
+    }
+
     init {
-        loadFeed()
+        try { loadFeed() } catch (e: Exception) { Log.e("HomeViewModel", "Init error", e) }
     }
 
     fun loadFeed(feedType: FeedType = _uiState.value.currentFeed) {
-        viewModelScope.launch {
+        viewModelScope.launch(handler) {
             _uiState.update { it.copy(isLoading = true, error = null, currentFeed = feedType) }
 
             val result = when (feedType) {

@@ -1,9 +1,16 @@
 package com.eshort.app.ui.components
 
+import android.util.Log
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
@@ -18,34 +25,59 @@ fun VideoPlayer(
     isVisible: Boolean,
     modifier: Modifier = Modifier
 ) {
+    if (videoUrl.isBlank()) {
+        Box(
+            modifier = modifier.fillMaxSize().background(Color.Black),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("Video unavailable", color = Color.Gray)
+        }
+        return
+    }
+
     val context = LocalContext.current
 
     val exoPlayer = remember(videoUrl) {
-        val cacheFactory = VideoCache.getCacheDataSourceFactory(context)
-        ExoPlayer.Builder(context)
-            .setMediaSourceFactory(
-                androidx.media3.exoplayer.source.DefaultMediaSourceFactory(cacheFactory)
-            )
-            .build().apply {
-                val mediaItem = MediaItem.fromUri(videoUrl)
-                setMediaItem(mediaItem)
-                repeatMode = Player.REPEAT_MODE_ONE
-                volume = 1f
-                prepare()
-            }
+        try {
+            val cacheFactory = VideoCache.getCacheDataSourceFactory(context)
+            ExoPlayer.Builder(context)
+                .setMediaSourceFactory(
+                    androidx.media3.exoplayer.source.DefaultMediaSourceFactory(cacheFactory)
+                )
+                .build().apply {
+                    val mediaItem = MediaItem.fromUri(videoUrl)
+                    setMediaItem(mediaItem)
+                    repeatMode = Player.REPEAT_MODE_ONE
+                    volume = 1f
+                    prepare()
+                }
+        } catch (e: Exception) {
+            Log.e("VideoPlayer", "Failed to create player", e)
+            null
+        }
+    }
+
+    if (exoPlayer == null) {
+        Box(
+            modifier = modifier.fillMaxSize().background(Color.Black),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("Video error", color = Color.Gray)
+        }
+        return
     }
 
     LaunchedEffect(isVisible) {
-        if (isVisible) {
-            exoPlayer.playWhenReady = true
-        } else {
-            exoPlayer.playWhenReady = false
+        try {
+            exoPlayer.playWhenReady = isVisible
+        } catch (e: Exception) {
+            Log.e("VideoPlayer", "Play state error", e)
         }
     }
 
     DisposableEffect(videoUrl) {
         onDispose {
-            exoPlayer.release()
+            try { exoPlayer.release() } catch (_: Exception) {}
         }
     }
 

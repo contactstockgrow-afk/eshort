@@ -51,16 +51,19 @@ class AuthViewModel @Inject constructor(
     }
 
     fun signInAsGuest() {
-        authRepository.signInAsGuest().fold(
-            onSuccess = {
-                _uiState.update { it.copy(isLoading = false) }
-            },
-            onFailure = { e ->
-                _uiState.update {
-                    it.copy(isLoading = false, error = e.message ?: "Guest sign in failed")
+        viewModelScope.launch(exceptionHandler) {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            authRepository.signInAsGuest().fold(
+                onSuccess = {
+                    _uiState.update { it.copy(isLoading = false) }
+                },
+                onFailure = { e ->
+                    _uiState.update {
+                        it.copy(isLoading = false, error = e.message ?: "Guest sign in failed")
+                    }
                 }
-            }
-        )
+            )
+        }
     }
 
     fun register(displayName: String, username: String) {

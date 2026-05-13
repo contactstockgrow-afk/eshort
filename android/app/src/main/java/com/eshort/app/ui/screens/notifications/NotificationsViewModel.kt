@@ -1,10 +1,12 @@
 package com.eshort.app.ui.screens.notifications
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eshort.app.data.model.*
 import com.eshort.app.data.repository.SocialRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -26,12 +28,17 @@ class NotificationsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(NotificationsUiState())
     val uiState: StateFlow<NotificationsUiState> = _uiState.asStateFlow()
 
+    private val handler = CoroutineExceptionHandler { _, e ->
+        Log.e("NotificationsVM", "Coroutine error", e)
+        _uiState.update { it.copy(isLoading = false) }
+    }
+
     init {
-        loadAll()
+        try { loadAll() } catch (e: Exception) { Log.e("NotificationsVM", "Init error", e) }
     }
 
     private fun loadAll() {
-        viewModelScope.launch {
+        viewModelScope.launch(handler) {
             _uiState.update { it.copy(isLoading = true) }
 
             kotlinx.coroutines.coroutineScope {

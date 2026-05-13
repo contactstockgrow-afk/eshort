@@ -3,6 +3,7 @@ package com.eshort.app.ui.screens.profile
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eshort.app.data.model.User
@@ -11,6 +12,7 @@ import com.eshort.app.data.repository.AuthRepository
 import com.eshort.app.data.repository.SocialRepository
 import com.eshort.app.data.repository.VideoRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.io.File
@@ -43,12 +45,23 @@ class ProfileViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
+    private val handler = CoroutineExceptionHandler { _, e ->
+        Log.e("ProfileVM", "Coroutine error", e)
+        _uiState.update { it.copy(isLoading = false) }
+    }
+
     init {
-        loadProfile()
+        try {
+            val user = authRepository.currentUser.value
+            if (user != null) {
+                _uiState.update { it.copy(user = user, editDisplayName = user.displayName, editBio = user.bio) }
+            }
+            loadProfile()
+        } catch (e: Exception) { Log.e("ProfileVM", "Init error", e) }
     }
 
     private fun loadProfile() {
-        viewModelScope.launch {
+        viewModelScope.launch(handler) {
             _uiState.update { it.copy(isLoading = true) }
             authRepository.getCurrentUser().fold(
                 onSuccess = { user ->

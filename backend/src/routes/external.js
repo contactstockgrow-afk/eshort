@@ -56,8 +56,8 @@ router.post('/upload/video', authenticateApiKey, upload.single('video'), async (
       userId: req.apiKeyOwner,
       source: 'external_api',
       apiKeyId: req.apiKeyId,
-      videoUrl: `https://drive.google.com/file/d/${driveResult.id}/view`,
-      videoDirectUrl: `https://drive.google.com/uc?id=${driveResult.id}&export=download`,
+      videoUrl: `https://drive.google.com/file/d/${driveResult.fileId}/view`,
+      videoDirectUrl: `https://drive.google.com/uc?id=${driveResult.fileId}&export=download`,
       thumbnailUrl: '',
       caption: req.body.caption || '',
       hashtags: req.body.hashtags ? req.body.hashtags.split(',').map((h) => h.trim().toLowerCase()) : [],
@@ -68,14 +68,14 @@ router.post('/upload/video', authenticateApiKey, upload.single('video'), async (
       sharesCount: 0,
       duration: 0,
       status: 'active',
-      driveFileId: driveResult.id,
+      driveFileId: driveResult.fileId,
       createdAt: new Date().toISOString(),
     };
 
     const docRef = await db.collection('videos').add(videoData);
     logger.info(`External video uploaded: ${docRef.id} via API key ${req.apiKeyId}`);
 
-    return success(res, { videoId: docRef.id, driveFileId: driveResult.id, videoUrl: videoData.videoUrl }, 'Video uploaded via API', 201);
+    return success(res, { videoId: docRef.id, driveFileId: driveResult.fileId, videoUrl: videoData.videoUrl }, 'Video uploaded via API', 201);
   } catch (err) {
     logger.error('External API upload error:', err);
     return error(res, 'Video upload failed');
@@ -96,11 +96,11 @@ router.post('/upload/image', authenticateApiKey, upload.single('image'), async (
     };
 
     const driveResult = await uploadFileToDrive(fileStream, metadata, 'images');
-    logger.info(`External image uploaded: ${driveResult.id} via API key ${req.apiKeyId}`);
+    logger.info(`External image uploaded: ${driveResult.fileId} via API key ${req.apiKeyId}`);
 
     return success(res, {
-      driveFileId: driveResult.id,
-      imageUrl: `https://drive.google.com/uc?id=${driveResult.id}&export=download`,
+      driveFileId: driveResult.fileId,
+      imageUrl: `https://drive.google.com/uc?id=${driveResult.fileId}&export=download`,
     }, 'Image uploaded via API', 201);
   } catch (err) {
     logger.error('External API image upload error:', err);

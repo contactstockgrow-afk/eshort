@@ -50,7 +50,7 @@ val Divider = Color(0xFF2A2A2A)
 
 data class ApiResp<T>(val success: Boolean, val data: T? = null, val error: ApiErr? = null, val message: String? = null)
 data class ApiErr(val message: String)
-data class AdminStats(val totalUsers: Int = 0, val totalVideos: Int = 0, val totalReports: Int = 0, val activeUsers: Int = 0)
+data class AdminStats(val totalUsers: Int = 0, val totalVideos: Int = 0, val pendingReports: Int = 0, val newUsersToday: Int = 0)
 data class AdminUser(val uid: String = "", val email: String = "", val displayName: String = "", val username: String = "", val role: String = "", val isBanned: Boolean = false, val createdAt: String = "")
 data class AdminVideo(val id: String = "", val caption: String = "", val userId: String = "", val status: String = "", val viewsCount: Int = 0, val likesCount: Int = 0, val createdAt: String = "")
 data class AdminReport(val id: String = "", val type: String = "", val reason: String = "", val status: String = "", val createdAt: String = "")
@@ -58,14 +58,14 @@ data class ApiKeyInfo(val id: String = "", val name: String = "", val keyPrefix:
 data class ApiKeyCreated(val apiKey: String = "", val keyId: String = "", val name: String = "", val message: String = "")
 
 interface AdminApi {
-    @GET("admin/stats") suspend fun getStats(@Header("Authorization") auth: String): Response<ApiResp<AdminStats>>
+    @GET("admin/dashboard") suspend fun getStats(@Header("Authorization") auth: String): Response<ApiResp<AdminStats>>
     @GET("admin/users") suspend fun getUsers(@Header("Authorization") auth: String): Response<ApiResp<List<AdminUser>>>
     @GET("admin/videos") suspend fun getVideos(@Header("Authorization") auth: String): Response<ApiResp<List<AdminVideo>>>
     @GET("admin/reports") suspend fun getReports(@Header("Authorization") auth: String): Response<ApiResp<List<AdminReport>>>
-    @POST("admin/users/{uid}/ban") suspend fun banUser(@Header("Authorization") auth: String, @Path("uid") uid: String): Response<ApiResp<Any>>
-    @POST("admin/users/{uid}/unban") suspend fun unbanUser(@Header("Authorization") auth: String, @Path("uid") uid: String): Response<ApiResp<Any>>
+    @PUT("admin/users/{uid}/ban") suspend fun banUser(@Header("Authorization") auth: String, @Path("uid") uid: String): Response<ApiResp<Any>>
+    @PUT("admin/users/{uid}/unban") suspend fun unbanUser(@Header("Authorization") auth: String, @Path("uid") uid: String): Response<ApiResp<Any>>
     @DELETE("admin/videos/{id}") suspend fun deleteVideo(@Header("Authorization") auth: String, @Path("id") id: String): Response<ApiResp<Any>>
-    @POST("admin/reports/{id}/resolve") suspend fun resolveReport(@Header("Authorization") auth: String, @Path("id") id: String): Response<ApiResp<Any>>
+    @PUT("admin/reports/{id}/resolve") suspend fun resolveReport(@Header("Authorization") auth: String, @Path("id") id: String): Response<ApiResp<Any>>
     @GET("keys") suspend fun getApiKeys(@Header("Authorization") auth: String): Response<ApiResp<List<ApiKeyInfo>>>
     @POST("keys") suspend fun createApiKey(@Header("Authorization") auth: String, @Body body: Map<String, Any>): Response<ApiResp<ApiKeyCreated>>
     @DELETE("keys/{keyId}") suspend fun revokeApiKey(@Header("Authorization") auth: String, @Path("keyId") keyId: String): Response<ApiResp<Any>>
@@ -219,8 +219,8 @@ fun DashboardTab(api: AdminApi, token: String) {
         }
         Spacer(modifier = Modifier.height(12.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatCard("Reports", "${stats?.totalReports ?: 0}", Icons.Default.Report, Red, Modifier.weight(1f))
-            StatCard("Active", "${stats?.activeUsers ?: 0}", Icons.Default.TrendingUp, Pink, Modifier.weight(1f))
+            StatCard("Reports", "${stats?.pendingReports ?: 0}", Icons.Default.Report, Red, Modifier.weight(1f))
+            StatCard("New Today", "${stats?.newUsersToday ?: 0}", Icons.Default.TrendingUp, Pink, Modifier.weight(1f))
         }
     }
 }

@@ -38,6 +38,21 @@ fun AuthScreen(
     val uiState by viewModel.uiState.collectAsState()
     val isLoggedIn by viewModel.isLoggedIn.collectAsState()
 
+    val crashInfo = remember {
+        val prefs = context.getSharedPreferences("eshort_crash", android.content.Context.MODE_PRIVATE)
+        val crash = prefs.getString("last_crash", null)
+        if (crash != null) {
+            prefs.edit().remove("last_crash").remove("last_crash_trace").remove("last_crash_time").apply()
+        }
+        crash
+    }
+
+    LaunchedEffect(crashInfo) {
+        if (crashInfo != null) {
+            viewModel.setError("Previous crash: $crashInfo")
+        }
+    }
+
     LaunchedEffect(isLoggedIn) {
         if (isLoggedIn) onSignInSuccess()
     }
