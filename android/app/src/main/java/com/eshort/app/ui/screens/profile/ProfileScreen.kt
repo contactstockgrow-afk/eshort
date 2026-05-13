@@ -1,5 +1,6 @@
 package com.eshort.app.ui.screens.profile
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -121,7 +122,7 @@ fun ProfileScreen(
                     modifier = Modifier.fillMaxWidth().height(40.dp),
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                    border = ButtonDefaults.outlinedButtonBorder(enabled = true)
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
                 ) {
                     Text("Edit Profile", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 }
@@ -134,13 +135,7 @@ fun ProfileScreen(
                 selectedTabIndex = selectedVideoTab,
                 containerColor = DarkBackground,
                 contentColor = Color.White,
-                indicator = { tabPositions ->
-                    TabRowDefaults.SecondaryIndicator(
-                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedVideoTab]),
-                        color = AccentPink
-                    )
-                },
-                divider = { HorizontalDivider(color = DividerColor) }
+                divider = { Divider(color = DividerColor) }
             ) {
                 Tab(
                     selected = selectedVideoTab == 0,
@@ -304,7 +299,7 @@ fun SettingsBottomSheet(
             SettingsItem(icon = Icons.Outlined.Info, title = "About")
 
             Spacer(modifier = Modifier.height(8.dp))
-            HorizontalDivider(color = DividerColor)
+            Divider(color = DividerColor)
             Spacer(modifier = Modifier.height(8.dp))
 
             Row(

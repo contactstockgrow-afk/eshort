@@ -108,10 +108,12 @@ dependencies {
     // Google Sign-In
     implementation("com.google.android.gms:play-services-auth:20.7.0")
 
-    // ExoPlayer
+    // ExoPlayer + Video Caching
     implementation("androidx.media3:media3-exoplayer:1.2.1")
     implementation("androidx.media3:media3-ui:1.2.1")
     implementation("androidx.media3:media3-common:1.2.1")
+    implementation("androidx.media3:media3-datasource:1.2.1")
+    implementation("androidx.media3:media3-database:1.2.1")
 
     // Coil
     implementation("io.coil-kt:coil-compose:2.5.0")

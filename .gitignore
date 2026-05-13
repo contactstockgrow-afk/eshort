@@ -36,6 +36,8 @@ android/app/google-services.json
 # Firebase
 firebase-debug.log
 .firebase/
+**/serviceAccountKey.json
+**/driveConfig.json
 
 # Coverage
 coverage/
