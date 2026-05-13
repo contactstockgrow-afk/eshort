@@ -1,6 +1,7 @@
 package com.eshort.app.data.repository
 
 import android.content.Context
+import android.util.Log
 import com.eshort.app.data.model.AuthRequest
 import com.eshort.app.data.model.User
 import com.eshort.app.data.remote.api.EShortApi
@@ -32,40 +33,53 @@ class AuthRepository @Inject constructor(
             val authResult = firebaseAuth.signInWithCredential(credential).await()
             val fbUser = authResult.user
                 ?: return Result.failure(Exception("Firebase auth failed"))
-            val firebaseIdToken = fbUser.getIdToken(false).await()?.token
-                ?: return Result.failure(Exception("Failed to get ID token"))
 
-            try {
-                val response = api.googleSignIn(AuthRequest(idToken = firebaseIdToken))
-                if (response.isSuccessful && response.body()?.success == true) {
-                    val data = response.body()?.data
-                    if (data?.isNewUser == true) {
-                        Result.success(User(uid = data.uid ?: "", email = data.email ?: ""))
-                    } else {
-                        data?.user?.let {
-                            _currentUser.value = it
-                            _isLoggedIn.value = true
-                            Result.success(it)
-                        } ?: Result.failure(Exception("No user data"))
-                    }
-                } else {
-                    Result.failure(Exception(response.body()?.error?.message ?: "Sign in failed"))
+            val user = User(
+                uid = fbUser.uid,
+                email = fbUser.email ?: "",
+                displayName = fbUser.displayName ?: "",
+                username = fbUser.email?.substringBefore("@") ?: "user_${fbUser.uid.take(8)}",
+                profilePictureUrl = fbUser.photoUrl?.toString() ?: ""
+            )
+            _currentUser.value = user
+            _isLoggedIn.value = true
+
+            syncWithBackend(fbUser.uid)
+
+            Result.success(user)
+        } catch (e: Exception) {
+            Log.e("AuthRepository", "Sign-in failed", e)
+            Result.failure(e)
+        }
+    }
+
+    fun signInAsGuest(): Result<User> {
+        val guestId = "guest_${System.currentTimeMillis()}"
+        val user = User(
+            uid = guestId,
+            email = "",
+            displayName = "Guest User",
+            username = "guest_${guestId.takeLast(6)}",
+            bio = "Browsing as guest"
+        )
+        _currentUser.value = user
+        _isLoggedIn.value = true
+        return Result.success(user)
+    }
+
+    private suspend fun syncWithBackend(uid: String) {
+        try {
+            val firebaseIdToken = firebaseAuth.currentUser?.getIdToken(false)?.await()?.token
+                ?: return
+            val response = api.googleSignIn(AuthRequest(idToken = firebaseIdToken))
+            if (response.isSuccessful && response.body()?.success == true) {
+                val data = response.body()?.data
+                if (data?.user != null) {
+                    _currentUser.value = data.user
                 }
-            } catch (e: Exception) {
-                android.util.Log.w("AuthRepository", "Backend unreachable, using Firebase auth", e)
-                val user = User(
-                    uid = fbUser.uid,
-                    email = fbUser.email ?: "",
-                    displayName = fbUser.displayName ?: "",
-                    profilePictureUrl = fbUser.photoUrl?.toString() ?: ""
-                )
-                _currentUser.value = user
-                _isLoggedIn.value = true
-                Result.success(user)
             }
         } catch (e: Exception) {
-            android.util.Log.e("AuthRepository", "Sign-in failed completely", e)
-            Result.failure(e)
+            Log.w("AuthRepository", "Backend sync failed (non-critical)", e)
         }
     }
 
@@ -145,13 +159,6 @@ class AuthRepository @Inject constructor(
             }
         } catch (e: Exception) {
             Result.failure(e)
-        }
-    }
-
-    suspend fun updateFcmToken(token: String) {
-        try {
-            api.updateFcmToken(mapOf("token" to token))
-        } catch (_: Exception) {
         }
     }
 

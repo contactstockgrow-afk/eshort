@@ -38,14 +38,8 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch(exceptionHandler) {
             _uiState.update { it.copy(isLoading = true, error = null) }
             authRepository.signInWithGoogle(idToken).fold(
-                onSuccess = { user ->
-                    if (user.username.isEmpty()) {
-                        _uiState.update {
-                            it.copy(isLoading = false, isNewUser = true, pendingUser = user)
-                        }
-                    } else {
-                        _uiState.update { it.copy(isLoading = false) }
-                    }
+                onSuccess = {
+                    _uiState.update { it.copy(isLoading = false) }
                 },
                 onFailure = { e ->
                     _uiState.update {
@@ -54,6 +48,19 @@ class AuthViewModel @Inject constructor(
                 }
             )
         }
+    }
+
+    fun signInAsGuest() {
+        authRepository.signInAsGuest().fold(
+            onSuccess = {
+                _uiState.update { it.copy(isLoading = false) }
+            },
+            onFailure = { e ->
+                _uiState.update {
+                    it.copy(isLoading = false, error = e.message ?: "Guest sign in failed")
+                }
+            }
+        )
     }
 
     fun register(displayName: String, username: String) {
