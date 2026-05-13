@@ -74,12 +74,13 @@ async function googleSignIn(req, res) {
       if (userData.isBanned) {
         return error(res, 'Account has been suspended', 403);
       }
-      await db.collection('users').doc(uid).update({
+      const updates = {
         lastLoginAt: new Date().toISOString(),
         driveConnected: true,
         driveFolders: getFolderIds(),
-      });
-      return success(res, { user: userData, isNewUser: false });
+      };
+      await db.collection('users').doc(uid).update(updates);
+      return success(res, { user: { ...userData, ...updates }, isNewUser: false });
     }
 
     return success(res, { isNewUser: true, uid, email: decodedToken.email });

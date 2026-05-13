@@ -114,7 +114,7 @@ function getFolderId(type) {
 }
 
 async function uploadFileToDrive(fileStream, metadata, folderType) {
-  const folderId = typeof folderType === 'string' && folderType.length > 10
+  const folderId = typeof folderType === 'string' && folderType.length > 20
     ? folderType
     : getFolderId(folderType);
 
