@@ -4,6 +4,7 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
+import android.util.Log
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
@@ -11,7 +12,16 @@ class EShortApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        setupExceptionHandler()
         createNotificationChannels()
+    }
+
+    private fun setupExceptionHandler() {
+        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            Log.e("eShort", "Uncaught exception in ${thread.name}", throwable)
+            defaultHandler?.uncaughtException(thread, throwable)
+        }
     }
 
     private fun createNotificationChannels() {

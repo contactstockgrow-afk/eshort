@@ -56,8 +56,8 @@ fun AuthScreen(
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
         try {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             val account = task.getResult(ApiException::class.java)
             val token = account?.idToken
             if (token != null) {
@@ -72,9 +72,13 @@ fun AuthScreen(
                 GoogleSignInStatusCodes.SIGN_IN_CURRENTLY_IN_PROGRESS -> "Sign-in already in progress"
                 GoogleSignInStatusCodes.SIGN_IN_FAILED -> "Sign-in failed. Check your Google account settings."
                 12500 -> "Google Sign-In configuration error. Please update Google Play Services."
+                10 -> "Sign-in configuration error. Please reinstall the app."
                 else -> "Sign-in error (${e.statusCode}): ${e.message}"
             }
             viewModel.setError(msg)
+        } catch (e: Exception) {
+            Log.e("AuthScreen", "Unexpected sign-in error", e)
+            viewModel.setError("Sign-in failed: ${e.message ?: "Unknown error"}")
         }
     }
 

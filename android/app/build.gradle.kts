@@ -25,7 +25,8 @@ android {
 
     buildTypes {
         debug {
-            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:3000/api\"")
+            buildConfigField("String", "API_BASE_URL", "\"https://546d5c193063-tunnel-oiimscn5.devinapps.com/api\"")
+            buildConfigField("String", "TUNNEL_AUTH", "\"dXNlcjo2NGY5NDE2ZTk4NjY5NGVlOWFkMGVmOGIwOGQxYzFjNQ==\"")
         }
         release {
             isMinifyEnabled = true
@@ -35,6 +36,7 @@ android {
                 "proguard-rules.pro"
             )
             buildConfigField("String", "API_BASE_URL", "\"https://api.eshort.app/api\"")
+            buildConfigField("String", "TUNNEL_AUTH", "\"\"")
         }
     }
 

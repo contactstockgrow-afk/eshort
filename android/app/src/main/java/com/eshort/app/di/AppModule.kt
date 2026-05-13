@@ -41,19 +41,24 @@ object AppModule {
             val token = try {
                 firebaseAuth.currentUser?.let { user ->
                     val task = user.getIdToken(false)
-                    Tasks.await(task).token
+                    Tasks.await(task, 10, TimeUnit.SECONDS).token
                 }
             } catch (_: Exception) {
                 null
             }
-            val request = if (token != null) {
-                chain.request().newBuilder()
-                    .addHeader("Authorization", "Bearer $token")
-                    .build()
+            val requestBuilder = chain.request().newBuilder()
+            val tunnelAuth = BuildConfig.TUNNEL_AUTH
+            if (tunnelAuth.isNotEmpty()) {
+                requestBuilder.addHeader("Authorization", "Basic $tunnelAuth")
+                if (token != null) {
+                    requestBuilder.addHeader("X-Firebase-Token", token)
+                }
             } else {
-                chain.request()
+                if (token != null) {
+                    requestBuilder.addHeader("Authorization", "Bearer $token")
+                }
             }
-            chain.proceed(request)
+            chain.proceed(requestBuilder.build())
         }
     }
 

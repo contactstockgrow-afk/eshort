@@ -1,10 +1,12 @@
 package com.eshort.app.ui.screens.auth
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eshort.app.data.model.User
 import com.eshort.app.data.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -27,8 +29,13 @@ class AuthViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
+    private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        Log.e("AuthViewModel", "Coroutine exception", throwable)
+        _uiState.update { it.copy(isLoading = false, error = throwable.message ?: "Unexpected error") }
+    }
+
     fun signInWithGoogle(idToken: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(exceptionHandler) {
             _uiState.update { it.copy(isLoading = true, error = null) }
             authRepository.signInWithGoogle(idToken).fold(
                 onSuccess = { user ->
@@ -50,7 +57,7 @@ class AuthViewModel @Inject constructor(
     }
 
     fun register(displayName: String, username: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(exceptionHandler) {
             _uiState.update { it.copy(isLoading = true, error = null) }
             val user = _uiState.value.pendingUser
             val idToken = authRepository.firebaseUser?.uid ?: ""

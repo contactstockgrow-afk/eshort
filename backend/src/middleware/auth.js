@@ -2,17 +2,25 @@ const { getAuth } = require('../config/firebase');
 const { getFirestore } = require('../config/firebase');
 const { logger } = require('../utils/logger');
 
+function extractToken(req) {
+  const firebaseHeader = req.headers['x-firebase-token'];
+  if (firebaseHeader) return firebaseHeader;
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.split('Bearer ')[1];
+  }
+  return null;
+}
+
 async function authenticate(req, res, next) {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const token = extractToken(req);
+    if (!token) {
       return res.status(401).json({
         success: false,
         error: { message: 'No authentication token provided' },
       });
     }
-
-    const token = authHeader.split('Bearer ')[1];
     const decodedToken = await getAuth().verifyIdToken(token);
 
     req.user = {
@@ -33,9 +41,8 @@ async function authenticate(req, res, next) {
 
 async function optionalAuth(req, res, next) {
   try {
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.split('Bearer ')[1];
+    const token = extractToken(req);
+    if (token) {
       const decodedToken = await getAuth().verifyIdToken(token);
       req.user = {
         uid: decodedToken.uid,

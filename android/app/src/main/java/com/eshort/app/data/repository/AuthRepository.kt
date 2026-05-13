@@ -30,25 +30,41 @@ class AuthRepository @Inject constructor(
         return try {
             val credential = GoogleAuthProvider.getCredential(idToken, null)
             val authResult = firebaseAuth.signInWithCredential(credential).await()
-            val firebaseIdToken = authResult.user?.getIdToken(false)?.await()?.token
+            val fbUser = authResult.user
+                ?: return Result.failure(Exception("Firebase auth failed"))
+            val firebaseIdToken = fbUser.getIdToken(false).await()?.token
                 ?: return Result.failure(Exception("Failed to get ID token"))
 
-            val response = api.googleSignIn(AuthRequest(idToken = firebaseIdToken))
-            if (response.isSuccessful && response.body()?.success == true) {
-                val data = response.body()?.data
-                if (data?.isNewUser == true) {
-                    Result.success(User(uid = data.uid ?: "", email = data.email ?: ""))
+            try {
+                val response = api.googleSignIn(AuthRequest(idToken = firebaseIdToken))
+                if (response.isSuccessful && response.body()?.success == true) {
+                    val data = response.body()?.data
+                    if (data?.isNewUser == true) {
+                        Result.success(User(uid = data.uid ?: "", email = data.email ?: ""))
+                    } else {
+                        data?.user?.let {
+                            _currentUser.value = it
+                            _isLoggedIn.value = true
+                            Result.success(it)
+                        } ?: Result.failure(Exception("No user data"))
+                    }
                 } else {
-                    data?.user?.let {
-                        _currentUser.value = it
-                        _isLoggedIn.value = true
-                        Result.success(it)
-                    } ?: Result.failure(Exception("No user data"))
+                    Result.failure(Exception(response.body()?.error?.message ?: "Sign in failed"))
                 }
-            } else {
-                Result.failure(Exception(response.body()?.error?.message ?: "Sign in failed"))
+            } catch (e: Exception) {
+                android.util.Log.w("AuthRepository", "Backend unreachable, using Firebase auth", e)
+                val user = User(
+                    uid = fbUser.uid,
+                    email = fbUser.email ?: "",
+                    displayName = fbUser.displayName ?: "",
+                    profilePictureUrl = fbUser.photoUrl?.toString() ?: ""
+                )
+                _currentUser.value = user
+                _isLoggedIn.value = true
+                Result.success(user)
             }
         } catch (e: Exception) {
+            android.util.Log.e("AuthRepository", "Sign-in failed completely", e)
             Result.failure(e)
         }
     }
