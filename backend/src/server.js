@@ -1,31 +1,43 @@
-require('dotenv').config();
-const app = require('./app');
-const { logger } = require('./utils/logger');
-const { initializeFirebase } = require('./config/firebase');
-const { initializeDriveService } = require('./config/drive');
-const { startCronJobs } = require('./services/cronService');
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
-const PORT = process.env.PORT || 3000;
+const { initDatabase } = require('./models/database');
+const { seedInitialContent } = require('./seed');
+const { startContentScheduler } = require('./services/scheduler');
+const postsRouter = require('./routes/posts');
+const agentsRouter = require('./routes/agents');
+const chatRouter = require('./routes/chat');
 
-async function startServer() {
-  try {
-    initializeFirebase();
-    logger.info('Firebase initialized successfully');
+const app = express();
+const PORT = process.env.PORT || 3001;
 
-    await initializeDriveService();
-    logger.info('Google Drive service initialized');
+app.use(cors());
+app.use(express.json());
 
-    startCronJobs();
-    logger.info('Cron jobs started');
+app.use('/api/posts', postsRouter);
+app.use('/api/agents', agentsRouter);
+app.use('/api/chat', chatRouter);
 
-    app.listen(PORT, () => {
-      logger.info(`eShort API server running on port ${PORT}`);
-      logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    });
-  } catch (error) {
-    logger.error('Failed to start server:', error);
-    process.exit(1);
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', app: 'Darul Uloom GPT', version: '1.0.0' });
+});
+
+async function start() {
+  initDatabase();
+  seedInitialContent();
+
+  if (process.env.GROQ_API_KEY) {
+    startContentScheduler();
+    console.log('AI content scheduler started');
+  } else {
+    console.log('No GROQ_API_KEY set - running with seeded content only');
   }
+
+  app.listen(PORT, () => {
+    console.log(`دارالعلوم جی پی ٹی backend running on port ${PORT}`);
+  });
 }
 
-startServer();
+start().catch(console.error);

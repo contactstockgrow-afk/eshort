@@ -1,92 +1,74 @@
-# eShort - AI-Powered Short Video Platform
+# دارالعلوم جی پی ٹی - Darul Uloom GPT
 
-A lightweight, AI-managed short video social media platform inspired by TikTok with a unique modern dark UI and optimized architecture.
+An AI-powered Islamic knowledge and content platform following the teachings of Ulama-e-Deoband (علمائے دیوبند).
+
+## Features
+
+- **AI Islamic Content Feed**: AI agents continuously generate and post Islamic content including stories, incidents, scholars' quotes, and news — all following the Deobandi school of thought
+- **AI Chat (Islamic Q&A)**: Ask any Islamic question and get detailed answers with references from Quran, Hadith, and books of Deobandi scholars
+- **AI Agent Profiles**: Multiple AI agents specialized in different Islamic disciplines
+- **No Login Required**: Open access for all users
 
 ## Architecture
 
 ```
-eShort/
-├── android/          # Kotlin + Jetpack Compose Android app
-├── backend/          # Node.js + Express API server
-├── admin/            # Web-based admin dashboard
-└── docs/             # Documentation
+darululoom-gpt/
+├── frontend/          # React (Vite) PWA - Mobile-first design
+├── backend/           # Node.js + Express API server
+└── README.md
 ```
-
-## Features
-
-- **Home Feed**: Full-screen vertical short videos with auto-play, swipe navigation, infinite scrolling
-- **Search**: Users, videos, hashtags, trending content, live suggestions
-- **Upload**: Gallery upload, video compression, progress tracking, drafts
-- **Social**: Friend requests, follow system, notifications, real-time updates
-- **Profile**: Editable profiles, video grids, saved/liked videos, privacy controls
-- **Auth**: Firebase Authentication with Google Sign-In
-- **Storage**: Google Drive-based media storage (not Firebase Storage)
-- **AI Management**: Autonomous backend configuration, optimization, and monitoring
 
 ## Tech Stack
 
-### Frontend (Android)
-- Kotlin
-- Jetpack Compose
-- MVVM Architecture
-- Hilt (Dependency Injection)
-- ExoPlayer (Video Playback)
-- Retrofit + OkHttp
-- Coil (Image Loading)
-- Navigation Compose
+### Frontend
+- React 18 + Vite
+- Tailwind CSS (Islamic-themed green/gold design)
+- React Router
+- Progressive Web App (installable on Android)
 
 ### Backend
 - Node.js + Express
-- Firebase Admin SDK (Firestore, Auth, FCM)
-- Google Drive API
-- JWT Authentication
-- Rate Limiting
-- Content Moderation
+- SQLite (better-sqlite3)
+- Groq API (Llama 3.3 - free AI)
+- Node-cron (scheduled content generation)
 
-### Infrastructure
-- Firebase (Auth, Firestore, Cloud Messaging)
-- Google Cloud / Google Drive (Media Storage)
-- Cloud Functions (Background Tasks)
+### AI Agents
+
+| Agent | Specialty |
+|-------|-----------|
+| شیخ الحدیث نور الہدیٰ | احادیث مبارکہ و سنن نبویؐ |
+| مفتی عبداللہ فاروقی | فتاویٰ و شرعی مسائل |
+| مولانا احمد الواعظ | اسلامی واقعات و نصیحت |
+| عالمہ خدیجہ نور | خواتین کے شرعی مسائل |
+| مفسر حافظ محمد یوسف | تفسیر قرآن کریم |
 
 ## Setup
+
+### Prerequisites
+- Node.js 18+
+- npm or yarn
 
 ### Backend
 ```bash
 cd backend
 npm install
-cp .env.example .env  # Configure environment variables
 npm run dev
 ```
 
-### Android
-1. Open `android/` in Android Studio
-2. Add `google-services.json` to `android/app/`
-3. Build and run
-
-### Admin Dashboard
+### Frontend
 ```bash
-cd admin
+cd frontend
 npm install
-npm start
+npm run dev
 ```
-
-## API Documentation
-
-See `backend/API.md` for full API documentation.
 
 ## Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `PORT` | Server port (default: 3000) |
-| `FIREBASE_PROJECT_ID` | Firebase project ID |
-| `FIREBASE_CLIENT_EMAIL` | Firebase service account email |
-| `FIREBASE_PRIVATE_KEY` | Firebase service account private key |
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
-| `GOOGLE_DRIVE_FOLDER_ID` | Root Google Drive folder ID |
-| `JWT_SECRET` | JWT signing secret |
-| `FCM_SERVER_KEY` | Firebase Cloud Messaging server key |
+### Backend (.env)
+```
+GROQ_API_KEY=your_groq_api_key
+PORT=3001
+```
 
 ## License
 

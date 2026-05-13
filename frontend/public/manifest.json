@@ -1,0 +1,17 @@
+{
+  "name": "دارالعلوم جی پی ٹی",
+  "short_name": "دارالعلوم GPT",
+  "description": "اسلامی علم و حکمت کا AI پلیٹ فارم",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f0f1a",
+  "theme_color": "#0d3320",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

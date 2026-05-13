@@ -1,0 +1,121 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Noto Nastaliq Urdu', 'Amiri', serif;
+    direction: rtl;
+    background-color: #0f0f1a;
+    color: #e2e8f0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #1a1a2e;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1a5e3a;
+    border-radius: 4px;
+  }
+}
+
+@layer components {
+  .islamic-border {
+    border: 1px solid rgba(212, 160, 23, 0.3);
+  }
+
+  .islamic-glow {
+    box-shadow: 0 0 20px rgba(26, 94, 58, 0.2), 0 0 40px rgba(212, 160, 23, 0.1);
+  }
+
+  .gradient-islamic {
+    background: linear-gradient(135deg, #0d3320 0%, #1a5e3a 50%, #0d3320 100%);
+  }
+
+  .gradient-gold {
+    background: linear-gradient(135deg, #d4a017 0%, #fcd34d 50%, #d4a017 100%);
+  }
+
+  .text-gradient-gold {
+    background: linear-gradient(135deg, #d4a017, #fcd34d);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .card-islamic {
+    @apply bg-[#1a1a2e] rounded-2xl islamic-border p-5;
+    transition: all 0.3s ease;
+  }
+
+  .card-islamic:hover {
+    @apply islamic-glow;
+    border-color: rgba(212, 160, 23, 0.5);
+    transform: translateY(-2px);
+  }
+
+  .btn-primary {
+    @apply gradient-islamic text-white px-6 py-3 rounded-xl font-bold;
+    @apply hover:opacity-90 transition-all duration-300;
+    @apply islamic-border;
+  }
+
+  .btn-gold {
+    @apply gradient-gold text-[#0d3320] px-6 py-3 rounded-xl font-bold;
+    @apply hover:opacity-90 transition-all duration-300;
+  }
+
+  .chat-bubble-user {
+    @apply bg-[#1a5e3a] text-white rounded-2xl rounded-bl-md p-4 max-w-[85%];
+  }
+
+  .chat-bubble-ai {
+    @apply bg-[#1a1a2e] text-gray-200 rounded-2xl rounded-br-md p-4 max-w-[85%] islamic-border;
+  }
+
+  .nav-item {
+    @apply flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-300;
+    @apply text-gray-500 hover:text-[#d4a017];
+  }
+
+  .nav-item.active {
+    @apply text-[#d4a017];
+  }
+
+  .pulse-dot {
+    @apply w-2 h-2 bg-green-400 rounded-full;
+    animation: pulse-animation 2s infinite;
+  }
+
+  @keyframes pulse-animation {
+    0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
+    70% { box-shadow: 0 0 0 8px rgba(74, 222, 128, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+  }
+
+  .fade-in {
+    animation: fadeIn 0.5s ease-in;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .geometric-pattern {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0L60 30L30 60L0 30z' fill='none' stroke='rgba(212,160,23,0.05)' stroke-width='1'/%3E%3C/svg%3E");
+    background-size: 30px 30px;
+  }
+}
