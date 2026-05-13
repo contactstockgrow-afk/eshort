@@ -23,6 +23,7 @@ val TextSecondary = Color(0xFFAAAAAA)
 val TextTertiary = Color(0xFF666666)
 val DividerColor = Color(0xFF2A2A2A)
 val SuccessGreen = Color(0xFF34C759)
+val AccentGreen = SuccessGreen
 val WarningOrange = Color(0xFFFF9500)
 val ErrorRed = Color(0xFFFF3B30)
 

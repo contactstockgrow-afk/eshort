@@ -1,5 +1,6 @@
 package com.eshort.app.ui.screens.search
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eshort.app.data.model.*
@@ -28,12 +29,17 @@ class SearchViewModel @Inject constructor(
 
     private var suggestionsJob: Job? = null
 
+    private val handler = CoroutineExceptionHandler { _, e ->
+        Log.e("SearchVM", "Coroutine error", e)
+        _uiState.update { it.copy(isLoading = false) }
+    }
+
     init {
-        loadTrending()
+        try { loadTrending() } catch (e: Exception) { Log.e("SearchVM", "Init error", e) }
     }
 
     private fun loadTrending() {
-        viewModelScope.launch {
+        viewModelScope.launch(handler) {
             _uiState.update { it.copy(isLoading = true) }
             videoRepository.getTrending().fold(
                 onSuccess = { data ->

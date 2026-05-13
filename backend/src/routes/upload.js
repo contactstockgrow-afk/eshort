@@ -49,6 +49,13 @@ router.post(
   uploadController.uploadThumbnail
 );
 
+router.post(
+  '/image',
+  authenticate,
+  upload.single('image'),
+  uploadController.uploadImage
+);
+
 router.get('/status/:uploadId', authenticate, uploadController.getUploadStatus);
 
 router.post('/draft', authenticate, uploadController.saveDraft);
@@ -56,5 +63,7 @@ router.post('/draft', authenticate, uploadController.saveDraft);
 router.get('/drafts', authenticate, uploadController.getDrafts);
 
 router.delete('/draft/:draftId', authenticate, uploadController.deleteDraft);
+
+router.delete('/video/:videoId', authenticate, uploadController.deleteVideo);
 
 module.exports = router;

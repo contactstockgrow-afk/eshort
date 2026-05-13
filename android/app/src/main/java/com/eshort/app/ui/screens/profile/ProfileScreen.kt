@@ -1,5 +1,9 @@
 package com.eshort.app.ui.screens.profile
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -18,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -36,6 +41,13 @@ fun ProfileScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showSettings by remember { mutableStateOf(false) }
     var selectedVideoTab by remember { mutableIntStateOf(0) }
+    val context = LocalContext.current
+
+    val imageLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { viewModel.uploadProfilePicture(it, context) }
+    }
 
     Column(
         modifier = Modifier
@@ -67,20 +79,49 @@ fun ProfileScreen(
                 CircularProgressIndicator(color = AccentPink)
             }
         } else {
-            // Profile header
             Column(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                AsyncImage(
-                    model = uiState.user?.profilePictureUrl,
-                    contentDescription = "Profile Picture",
-                    modifier = Modifier
-                        .size(88.dp)
-                        .clip(CircleShape)
-                        .background(DarkSurfaceVariant),
-                    contentScale = ContentScale.Crop
-                )
+                // Profile picture with edit overlay
+                Box(contentAlignment = Alignment.BottomEnd) {
+                    AsyncImage(
+                        model = uiState.user?.profilePictureUrl,
+                        contentDescription = "Profile Picture",
+                        modifier = Modifier
+                            .size(88.dp)
+                            .clip(CircleShape)
+                            .background(DarkSurfaceVariant)
+                            .clickable { imageLauncher.launch("image/*") },
+                        contentScale = ContentScale.Crop
+                    )
+                    if (uiState.isUploadingPicture) {
+                        Box(
+                            modifier = Modifier
+                                .size(88.dp)
+                                .clip(CircleShape)
+                                .background(Color.Black.copy(alpha = 0.5f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = AccentPink,
+                                strokeWidth = 2.dp
+                            )
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(AccentPink)
+                                .clickable { imageLauncher.launch("image/*") },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.CameraAlt, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -103,7 +144,6 @@ fun ProfileScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Stats
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
@@ -115,32 +155,48 @@ fun ProfileScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Edit Profile button
                 OutlinedButton(
                     onClick = { viewModel.toggleEditMode() },
                     modifier = Modifier.fillMaxWidth().height(40.dp),
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                    border = ButtonDefaults.outlinedButtonBorder(enabled = true)
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
                 ) {
                     Text("Edit Profile", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                }
+            }
+
+            // Error/success messages
+            if (uiState.error != null) {
+                Text(
+                    text = uiState.error!!,
+                    color = ErrorRed,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
+            if (uiState.successMessage != null) {
+                Text(
+                    text = uiState.successMessage!!,
+                    color = AccentGreen,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+                LaunchedEffect(uiState.successMessage) {
+                    kotlinx.coroutines.delay(2000)
+                    viewModel.clearMessages()
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
             // Video tabs
+            @Suppress("DEPRECATION")
             TabRow(
                 selectedTabIndex = selectedVideoTab,
                 containerColor = DarkBackground,
                 contentColor = Color.White,
-                indicator = { tabPositions ->
-                    TabRowDefaults.SecondaryIndicator(
-                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedVideoTab]),
-                        color = AccentPink
-                    )
-                },
-                divider = { HorizontalDivider(color = DividerColor) }
+                divider = { Divider(color = DividerColor) }
             ) {
                 Tab(
                     selected = selectedVideoTab == 0,
@@ -165,7 +221,6 @@ fun ProfileScreen(
                 )
             }
 
-            // Video grid
             val videos = when (selectedVideoTab) {
                 0 -> uiState.userVideos
                 1 -> uiState.savedVideos
@@ -207,7 +262,21 @@ fun ProfileScreen(
         }
     }
 
-    // Settings bottom sheet
+    // Edit Profile Dialog
+    if (uiState.isEditMode) {
+        EditProfileDialog(
+            displayName = uiState.editDisplayName,
+            bio = uiState.editBio,
+            isPrivate = uiState.editIsPrivate,
+            isSaving = uiState.isSaving,
+            onDisplayNameChange = { viewModel.updateEditDisplayName(it) },
+            onBioChange = { viewModel.updateEditBio(it) },
+            onPrivacyChange = { viewModel.updateEditPrivacy(it) },
+            onSave = { viewModel.saveProfile() },
+            onDismiss = { viewModel.toggleEditMode() }
+        )
+    }
+
     if (showSettings) {
         SettingsBottomSheet(
             onDismiss = { showSettings = false },
@@ -219,6 +288,103 @@ fun ProfileScreen(
             user = uiState.user
         )
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditProfileDialog(
+    displayName: String,
+    bio: String,
+    isPrivate: Boolean,
+    isSaving: Boolean,
+    onDisplayNameChange: (String) -> Unit,
+    onBioChange: (String) -> Unit,
+    onPrivacyChange: (Boolean) -> Unit,
+    onSave: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = DarkSurface,
+        titleContentColor = Color.White,
+        title = { Text("Edit Profile", fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = displayName,
+                    onValueChange = onDisplayNameChange,
+                    label = { Text("Display Name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = AccentPink,
+                        unfocusedBorderColor = DividerColor,
+                        focusedLabelColor = AccentPink,
+                        unfocusedLabelColor = TextSecondary,
+                        cursorColor = AccentPink,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = bio,
+                    onValueChange = onBioChange,
+                    label = { Text("Bio") },
+                    maxLines = 4,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = AccentPink,
+                        unfocusedBorderColor = DividerColor,
+                        focusedLabelColor = AccentPink,
+                        unfocusedLabelColor = TextSecondary,
+                        cursorColor = AccentPink,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    supportingText = { Text("${bio.length}/200", color = TextTertiary) }
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Private Account", color = Color.White)
+                    Switch(
+                        checked = isPrivate,
+                        onCheckedChange = onPrivacyChange,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = AccentPink,
+                            checkedTrackColor = AccentPink.copy(alpha = 0.3f),
+                            uncheckedThumbColor = TextTertiary,
+                            uncheckedTrackColor = DarkSurfaceVariant
+                        )
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onSave,
+                enabled = !isSaving && displayName.length >= 2,
+                colors = ButtonDefaults.buttonColors(containerColor = AccentPink)
+            ) {
+                if (isSaving) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
+                } else {
+                    Text("Save")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = TextSecondary)
+            }
+        }
+    )
 }
 
 @Composable
@@ -304,7 +470,8 @@ fun SettingsBottomSheet(
             SettingsItem(icon = Icons.Outlined.Info, title = "About")
 
             Spacer(modifier = Modifier.height(8.dp))
-            HorizontalDivider(color = DividerColor)
+            @Suppress("DEPRECATION")
+            Divider(color = DividerColor)
             Spacer(modifier = Modifier.height(8.dp))
 
             Row(

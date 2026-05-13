@@ -6,6 +6,7 @@ import com.eshort.app.data.remote.api.EShortApi
 import com.eshort.app.data.repository.AuthRepository
 import com.eshort.app.data.repository.VideoRepository
 import com.eshort.app.data.repository.SocialRepository
+import com.google.android.gms.tasks.Tasks
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.Module
@@ -37,15 +38,27 @@ object AppModule {
     @Singleton
     fun provideAuthInterceptor(firebaseAuth: FirebaseAuth): Interceptor {
         return Interceptor { chain ->
-            val token = firebaseAuth.currentUser?.getIdToken(false)?.result?.token
-            val request = if (token != null) {
-                chain.request().newBuilder()
-                    .addHeader("Authorization", "Bearer $token")
-                    .build()
-            } else {
-                chain.request()
+            val token = try {
+                firebaseAuth.currentUser?.let { user ->
+                    val task = user.getIdToken(false)
+                    Tasks.await(task, 10, TimeUnit.SECONDS).token
+                }
+            } catch (_: Exception) {
+                null
             }
-            chain.proceed(request)
+            val requestBuilder = chain.request().newBuilder()
+            val tunnelAuth = BuildConfig.TUNNEL_AUTH
+            if (tunnelAuth.isNotEmpty()) {
+                requestBuilder.addHeader("Authorization", "Basic $tunnelAuth")
+                if (token != null) {
+                    requestBuilder.addHeader("X-Firebase-Token", token)
+                }
+            } else {
+                if (token != null) {
+                    requestBuilder.addHeader("Authorization", "Bearer $token")
+                }
+            }
+            chain.proceed(requestBuilder.build())
         }
     }
 

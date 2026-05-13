@@ -1,10 +1,12 @@
 package com.eshort.app.ui.screens.auth
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eshort.app.data.model.User
 import com.eshort.app.data.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -27,18 +29,17 @@ class AuthViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
+    private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        Log.e("AuthViewModel", "Coroutine exception", throwable)
+        _uiState.update { it.copy(isLoading = false, error = throwable.message ?: "Unexpected error") }
+    }
+
     fun signInWithGoogle(idToken: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(exceptionHandler) {
             _uiState.update { it.copy(isLoading = true, error = null) }
             authRepository.signInWithGoogle(idToken).fold(
-                onSuccess = { user ->
-                    if (user.username.isEmpty()) {
-                        _uiState.update {
-                            it.copy(isLoading = false, isNewUser = true, pendingUser = user)
-                        }
-                    } else {
-                        _uiState.update { it.copy(isLoading = false) }
-                    }
+                onSuccess = {
+                    _uiState.update { it.copy(isLoading = false) }
                 },
                 onFailure = { e ->
                     _uiState.update {
@@ -49,8 +50,24 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    fun signInAsGuest() {
+        viewModelScope.launch(exceptionHandler) {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            authRepository.signInAsGuest().fold(
+                onSuccess = {
+                    _uiState.update { it.copy(isLoading = false) }
+                },
+                onFailure = { e ->
+                    _uiState.update {
+                        it.copy(isLoading = false, error = e.message ?: "Guest sign in failed")
+                    }
+                }
+            )
+        }
+    }
+
     fun register(displayName: String, username: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(exceptionHandler) {
             _uiState.update { it.copy(isLoading = true, error = null) }
             val user = _uiState.value.pendingUser
             val idToken = authRepository.firebaseUser?.uid ?: ""
@@ -73,8 +90,28 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    fun createAccount(displayName: String) {
+        viewModelScope.launch(exceptionHandler) {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            authRepository.createAccountWithName(displayName).fold(
+                onSuccess = {
+                    _uiState.update { it.copy(isLoading = false) }
+                },
+                onFailure = { e ->
+                    _uiState.update {
+                        it.copy(isLoading = false, error = e.message ?: "Account creation failed")
+                    }
+                }
+            )
+        }
+    }
+
     fun signOut() {
         authRepository.signOut()
+    }
+
+    fun setError(message: String) {
+        _uiState.update { it.copy(error = message, isLoading = false) }
     }
 
     fun clearError() {

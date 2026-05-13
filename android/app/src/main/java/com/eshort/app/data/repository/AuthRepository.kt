@@ -1,6 +1,7 @@
 package com.eshort.app.data.repository
 
 import android.content.Context
+import android.util.Log
 import com.eshort.app.data.model.AuthRequest
 import com.eshort.app.data.model.User
 import com.eshort.app.data.remote.api.EShortApi
@@ -21,35 +22,114 @@ class AuthRepository @Inject constructor(
     private val _currentUser = MutableStateFlow<User?>(null)
     val currentUser: StateFlow<User?> = _currentUser
 
-    private val _isLoggedIn = MutableStateFlow(firebaseAuth.currentUser != null)
+    private val _isLoggedIn = MutableStateFlow(false)
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn
 
     val firebaseUser get() = firebaseAuth.currentUser
+
+    init {
+        if (firebaseAuth.currentUser != null) {
+            try {
+                val prefs = context.getSharedPreferences("eshort_user", Context.MODE_PRIVATE)
+                val savedName = prefs.getString("displayName", null)
+                val savedUsername = prefs.getString("username", null)
+                val savedUid = prefs.getString("uid", null)
+                val fbUser = firebaseAuth.currentUser!!
+                if (savedName != null && savedUid == fbUser.uid) {
+                    _currentUser.value = User(
+                        uid = fbUser.uid,
+                        email = fbUser.email ?: "",
+                        displayName = savedName,
+                        username = savedUsername ?: "user_${fbUser.uid.take(8)}",
+                        profilePictureUrl = fbUser.photoUrl?.toString() ?: ""
+                    )
+                    _isLoggedIn.value = true
+                }
+            } catch (e: Exception) {
+                Log.w("AuthRepository", "Failed to restore user", e)
+            }
+        }
+    }
 
     suspend fun signInWithGoogle(idToken: String): Result<User> {
         return try {
             val credential = GoogleAuthProvider.getCredential(idToken, null)
             val authResult = firebaseAuth.signInWithCredential(credential).await()
-            val firebaseIdToken = authResult.user?.getIdToken(false)?.await()?.token
-                ?: return Result.failure(Exception("Failed to get ID token"))
+            val fbUser = authResult.user
+                ?: return Result.failure(Exception("Firebase auth failed"))
 
+            val user = User(
+                uid = fbUser.uid,
+                email = fbUser.email ?: "",
+                displayName = fbUser.displayName ?: "",
+                username = fbUser.email?.substringBefore("@") ?: "user_${fbUser.uid.take(8)}",
+                profilePictureUrl = fbUser.photoUrl?.toString() ?: ""
+            )
+            _currentUser.value = user
+            _isLoggedIn.value = true
+
+            syncWithBackend(fbUser.uid)
+
+            Result.success(user)
+        } catch (e: Exception) {
+            Log.e("AuthRepository", "Sign-in failed", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun signInAsGuest(): Result<User> {
+        return createAccountWithName("Guest User")
+    }
+
+    suspend fun createAccountWithName(displayName: String): Result<User> {
+        return try {
+            val authResult = firebaseAuth.signInAnonymously().await()
+            val fbUser = authResult.user
+                ?: return Result.failure(Exception("Account creation failed"))
+
+            val safeName = displayName.ifBlank { "User" }
+            val username = safeName.lowercase().replace(" ", "_") + "_${fbUser.uid.take(6)}"
+
+            val user = User(
+                uid = fbUser.uid,
+                email = "",
+                displayName = safeName,
+                username = username,
+                bio = ""
+            )
+            _currentUser.value = user
+            _isLoggedIn.value = true
+
+            // Save name to SharedPreferences for persistence
+            try {
+                val prefs = context.getSharedPreferences("eshort_user", Context.MODE_PRIVATE)
+                prefs.edit()
+                    .putString("uid", fbUser.uid)
+                    .putString("displayName", safeName)
+                    .putString("username", username)
+                    .apply()
+            } catch (_: Exception) {}
+
+            Result.success(user)
+        } catch (e: Exception) {
+            Log.e("AuthRepository", "Account creation failed", e)
+            Result.failure(e)
+        }
+    }
+
+    private suspend fun syncWithBackend(uid: String) {
+        try {
+            val firebaseIdToken = firebaseAuth.currentUser?.getIdToken(false)?.await()?.token
+                ?: return
             val response = api.googleSignIn(AuthRequest(idToken = firebaseIdToken))
             if (response.isSuccessful && response.body()?.success == true) {
                 val data = response.body()?.data
-                if (data?.isNewUser == true) {
-                    Result.success(User(uid = data.uid ?: "", email = data.email ?: ""))
-                } else {
-                    data?.user?.let {
-                        _currentUser.value = it
-                        _isLoggedIn.value = true
-                        Result.success(it)
-                    } ?: Result.failure(Exception("No user data"))
+                if (data?.user != null) {
+                    _currentUser.value = data.user
                 }
-            } else {
-                Result.failure(Exception(response.body()?.error?.message ?: "Sign in failed"))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Log.w("AuthRepository", "Backend sync failed (non-critical)", e)
         }
     }
 
@@ -104,6 +184,19 @@ class AuthRepository @Inject constructor(
         }
     }
 
+    suspend fun updateProfile(updates: Map<String, Any>): Result<Unit> {
+        return try {
+            val response = api.updateProfile(updates)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(response.body()?.error?.message ?: "Update failed"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun getDriveAuthUrl(): Result<String> {
         return try {
             val response = api.getDriveAuthUrl()
@@ -119,16 +212,13 @@ class AuthRepository @Inject constructor(
         }
     }
 
-    suspend fun updateFcmToken(token: String) {
-        try {
-            api.updateFcmToken(mapOf("token" to token))
-        } catch (_: Exception) {
-        }
-    }
-
     fun signOut() {
         firebaseAuth.signOut()
         _currentUser.value = null
         _isLoggedIn.value = false
+        try {
+            context.getSharedPreferences("eshort_user", Context.MODE_PRIVATE)
+                .edit().clear().apply()
+        } catch (_: Exception) {}
     }
 }

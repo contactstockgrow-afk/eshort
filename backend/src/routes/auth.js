@@ -19,10 +19,6 @@ router.post(
 
 router.post('/google-signin', authLimiter, authController.googleSignIn);
 
-router.get('/google/drive-auth-url', authenticate, authController.getDriveAuthUrl);
-
-router.get('/google/callback', authController.handleDriveCallback);
-
 router.get('/me', authenticate, authController.getCurrentUser);
 
 router.put('/me', authenticate, authController.updateProfile);

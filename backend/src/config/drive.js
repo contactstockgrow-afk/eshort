@@ -1,36 +1,91 @@
 const { google } = require('googleapis');
+const fs = require('fs');
+const path = require('path');
 const { logger } = require('../utils/logger');
 
 let driveService;
-let oAuth2Client;
+let driveAuth;
+let folderIds = {};
 
-const SCOPES = [
-  'https://www.googleapis.com/auth/drive.file',
-  'https://www.googleapis.com/auth/drive.metadata.readonly',
-];
-
-const FOLDER_STRUCTURE = {
-  root: 'eShort',
-  videos: 'eShort/Videos',
-  profilePictures: 'eShort/ProfilePictures',
-  thumbnails: 'eShort/Thumbnails',
-  images: 'eShort/Images',
-};
+const FOLDER_NAMES = ['Videos', 'ProfilePictures', 'Thumbnails', 'Images'];
 
 async function initializeDriveService() {
   try {
-    oAuth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      process.env.GOOGLE_REDIRECT_URI
-    );
+    const keyPath = path.join(__dirname, '..', '..', 'serviceAccountKey.json');
+    let credentials;
 
-    driveService = google.drive({ version: 'v3', auth: oAuth2Client });
-    logger.info('Google Drive service configured');
+    if (fs.existsSync(keyPath)) {
+      credentials = JSON.parse(fs.readFileSync(keyPath, 'utf-8'));
+    } else if (process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+      credentials = {
+        client_email: process.env.FIREBASE_CLIENT_EMAIL,
+        private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        project_id: process.env.FIREBASE_PROJECT_ID,
+      };
+    } else {
+      throw new Error('No service account credentials found');
+    }
+
+    driveAuth = new google.auth.GoogleAuth({
+      credentials,
+      scopes: ['https://www.googleapis.com/auth/drive'],
+    });
+
+    driveService = google.drive({ version: 'v3', auth: driveAuth });
+
+    const configPath = path.join(__dirname, '..', '..', 'driveConfig.json');
+    if (fs.existsSync(configPath)) {
+      folderIds = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      logger.info('Drive folder config loaded from driveConfig.json');
+    } else {
+      folderIds = await ensureFolderStructure();
+      fs.writeFileSync(configPath, JSON.stringify(folderIds, null, 2));
+      logger.info('Drive folders created and config saved');
+    }
+
+    logger.info('Google Drive service initialized (service account mode)');
   } catch (error) {
     logger.error('Drive initialization error:', error);
     throw error;
   }
+}
+
+async function ensureFolderStructure() {
+  const rootId = await findOrCreateFolder('eShort', null);
+  const ids = { root: rootId };
+
+  for (const name of FOLDER_NAMES) {
+    ids[name.toLowerCase()] = await findOrCreateFolder(name, rootId);
+  }
+
+  return ids;
+}
+
+async function findOrCreateFolder(name, parentId) {
+  const q = parentId
+    ? `name='${name}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`
+    : `name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+
+  const existing = await driveService.files.list({
+    q,
+    fields: 'files(id)',
+    spaces: 'drive',
+  });
+
+  if (existing.data.files.length > 0) return existing.data.files[0].id;
+
+  const metadata = {
+    name,
+    mimeType: 'application/vnd.google-apps.folder',
+    ...(parentId && { parents: [parentId] }),
+  };
+
+  const folder = await driveService.files.create({
+    requestBody: metadata,
+    fields: 'id',
+  });
+
+  return folder.data.id;
 }
 
 function getDriveService() {
@@ -38,72 +93,32 @@ function getDriveService() {
   return driveService;
 }
 
-function getOAuth2Client() {
-  if (!oAuth2Client) throw new Error('OAuth2 client not initialized');
-  return oAuth2Client;
+function getFolderIds() {
+  return folderIds;
 }
 
-function getAuthUrl(state) {
-  return oAuth2Client.generateAuthUrl({
-    access_type: 'offline',
-    scope: SCOPES,
-    state,
-    prompt: 'consent',
-  });
-}
-
-async function setCredentials(tokens) {
-  oAuth2Client.setCredentials(tokens);
-}
-
-async function createFolderStructure(authClient) {
-  const drive = google.drive({ version: 'v3', auth: authClient });
-
-  const rootFolder = await createFolder(drive, FOLDER_STRUCTURE.root, null);
-  const folders = {};
-  folders.root = rootFolder;
-
-  const subFolders = ['Videos', 'ProfilePictures', 'Thumbnails', 'Images'];
-  for (const name of subFolders) {
-    folders[name.toLowerCase()] = await createFolder(drive, name, rootFolder);
-  }
-
-  return folders;
-}
-
-async function createFolder(drive, name, parentId) {
-  const query = parentId
-    ? `name='${name}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`
-    : `name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
-
-  const existing = await drive.files.list({
-    q: query,
-    fields: 'files(id, name)',
-    spaces: 'drive',
-  });
-
-  if (existing.data.files.length > 0) {
-    return existing.data.files[0].id;
-  }
-
-  const fileMetadata = {
-    name,
-    mimeType: 'application/vnd.google-apps.folder',
-    ...(parentId && { parents: [parentId] }),
+function getFolderId(type) {
+  const map = {
+    video: 'videos',
+    videos: 'videos',
+    profile: 'profilepictures',
+    profilepicture: 'profilepictures',
+    profilepictures: 'profilepictures',
+    thumbnail: 'thumbnails',
+    thumbnails: 'thumbnails',
+    image: 'images',
+    images: 'images',
   };
-
-  const folder = await drive.files.create({
-    resource: fileMetadata,
-    fields: 'id',
-  });
-
-  return folder.data.id;
+  const key = map[type.toLowerCase()] || type.toLowerCase();
+  return folderIds[key] || folderIds.root;
 }
 
-async function uploadFileToDrive(authClient, fileStream, metadata, folderId) {
-  const drive = google.drive({ version: 'v3', auth: authClient });
+async function uploadFileToDrive(fileStream, metadata, folderType) {
+  const folderId = typeof folderType === 'string' && folderType.length > 20
+    ? folderType
+    : getFolderId(folderType);
 
-  const response = await drive.files.create({
+  const response = await driveService.files.create({
     requestBody: {
       name: metadata.name,
       parents: [folderId],
@@ -116,12 +131,9 @@ async function uploadFileToDrive(authClient, fileStream, metadata, folderId) {
     fields: 'id, name, webViewLink, webContentLink, size',
   });
 
-  await drive.permissions.create({
+  await driveService.permissions.create({
     fileId: response.data.id,
-    requestBody: {
-      role: 'reader',
-      type: 'anyone',
-    },
+    requestBody: { role: 'reader', type: 'anyone' },
   });
 
   return {
@@ -135,20 +147,25 @@ async function uploadFileToDrive(authClient, fileStream, metadata, folderId) {
   };
 }
 
-async function deleteFileFromDrive(authClient, fileId) {
-  const drive = google.drive({ version: 'v3', auth: authClient });
-  await drive.files.delete({ fileId });
+async function deleteFileFromDrive(fileId) {
+  await driveService.files.delete({ fileId });
+}
+
+async function getFileMetadata(fileId) {
+  const response = await driveService.files.get({
+    fileId,
+    fields: 'id, name, mimeType, size, webViewLink, webContentLink',
+  });
+  return response.data;
 }
 
 module.exports = {
   initializeDriveService,
   getDriveService,
-  getOAuth2Client,
-  getAuthUrl,
-  setCredentials,
-  createFolderStructure,
+  getFolderIds,
+  getFolderId,
   uploadFileToDrive,
   deleteFileFromDrive,
-  FOLDER_STRUCTURE,
-  SCOPES,
+  getFileMetadata,
+  ensureFolderStructure,
 };
