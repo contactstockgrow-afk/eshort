@@ -104,6 +104,19 @@ class AuthRepository @Inject constructor(
         }
     }
 
+    suspend fun updateProfile(updates: Map<String, Any>): Result<Unit> {
+        return try {
+            val response = api.updateProfile(updates)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(response.body()?.error?.message ?: "Update failed"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun getDriveAuthUrl(): Result<String> {
         return try {
             val response = api.getDriveAuthUrl()

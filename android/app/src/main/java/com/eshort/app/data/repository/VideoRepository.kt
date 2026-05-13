@@ -128,6 +128,31 @@ class VideoRepository @Inject constructor(
         }
     }
 
+    suspend fun uploadProfilePicture(file: File): Result<String> {
+        return try {
+            val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
+            val imagePart = MultipartBody.Part.createFormData("image", file.name, requestFile)
+            val response = api.uploadProfilePicture(imagePart)
+            if (response.isSuccessful && response.body()?.success == true) {
+                val url = response.body()?.data?.get("profilePictureUrl") ?: ""
+                Result.success(url)
+            } else {
+                Result.failure(Exception("Upload failed"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun unsaveVideo(videoId: String): Result<Unit> {
+        return try {
+            api.unsaveVideo(videoId)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun saveVideo(videoId: String): Result<Unit> {
         return try {
             api.saveVideo(videoId)

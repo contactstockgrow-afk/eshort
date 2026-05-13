@@ -77,6 +77,10 @@ class AuthViewModel @Inject constructor(
         authRepository.signOut()
     }
 
+    fun setError(message: String) {
+        _uiState.update { it.copy(error = message, isLoading = false) }
+    }
+
     fun clearError() {
         _uiState.update { it.copy(error = null) }
     }

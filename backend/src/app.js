@@ -14,6 +14,8 @@ const searchRoutes = require('./routes/search');
 const notificationRoutes = require('./routes/notifications');
 const adminRoutes = require('./routes/admin');
 const feedRoutes = require('./routes/feed');
+const apiKeyRoutes = require('./routes/apiKeys');
+const externalRoutes = require('./routes/external');
 
 const app = express();
 
@@ -44,6 +46,8 @@ app.use('/api/search', searchRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/feed', feedRoutes);
+app.use('/api/keys', apiKeyRoutes);
+app.use('/api/external', externalRoutes);
 
 app.use((err, req, res, _next) => {
   const statusCode = err.statusCode || 500;

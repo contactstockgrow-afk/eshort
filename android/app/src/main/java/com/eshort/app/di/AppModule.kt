@@ -6,6 +6,7 @@ import com.eshort.app.data.remote.api.EShortApi
 import com.eshort.app.data.repository.AuthRepository
 import com.eshort.app.data.repository.VideoRepository
 import com.eshort.app.data.repository.SocialRepository
+import com.google.android.gms.tasks.Tasks
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.Module
@@ -37,7 +38,14 @@ object AppModule {
     @Singleton
     fun provideAuthInterceptor(firebaseAuth: FirebaseAuth): Interceptor {
         return Interceptor { chain ->
-            val token = firebaseAuth.currentUser?.getIdToken(false)?.result?.token
+            val token = try {
+                firebaseAuth.currentUser?.let { user ->
+                    val task = user.getIdToken(false)
+                    Tasks.await(task).token
+                }
+            } catch (_: Exception) {
+                null
+            }
             val request = if (token != null) {
                 chain.request().newBuilder()
                     .addHeader("Authorization", "Bearer $token")

@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.eshort.app.data.model.Comment
 import com.eshort.app.data.model.Video
 import com.eshort.app.ui.components.VideoPlayer
 import com.eshort.app.ui.theme.*
@@ -85,7 +86,7 @@ fun HomeScreen(
                     video = uiState.videos[page],
                     isPlaying = pagerState.currentPage == page,
                     onLike = { viewModel.likeVideo(uiState.videos[page].id) },
-                    onComment = { },
+                    onComment = { viewModel.openComments(uiState.videos[page].id) },
                     onShare = { viewModel.shareVideo(uiState.videos[page].id) },
                     onProfileClick = { uiState.videos[page].user?.uid?.let(onNavigateToProfile) },
                     onDoubleTap = { viewModel.likeVideo(uiState.videos[page].id) }
@@ -113,6 +114,17 @@ fun HomeScreen(
                 onClick = { viewModel.switchFeed(FeedType.FOR_YOU) }
             )
         }
+    }
+
+    // Comment bottom sheet
+    if (uiState.commentVideoId != null) {
+        CommentsBottomSheet(
+            comments = uiState.comments,
+            isLoading = uiState.isLoadingComments,
+            isSending = uiState.isSendingComment,
+            onSendComment = { viewModel.sendComment(it) },
+            onDismiss = { viewModel.closeComments() }
+        )
     }
 }
 
@@ -315,6 +327,125 @@ fun VideoCard(
                     showLikeAnimation = false
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CommentsBottomSheet(
+    comments: List<Comment>,
+    isLoading: Boolean,
+    isSending: Boolean,
+    onSendComment: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var commentText by remember { mutableStateOf("") }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = DarkSurface,
+        contentColor = Color.White
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 300.dp, max = 500.dp)
+                .padding(horizontal = 16.dp)
+        ) {
+            Text(
+                text = "Comments",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
+            @Suppress("DEPRECATION")
+            Divider(color = DividerColor, modifier = Modifier.padding(vertical = 8.dp))
+
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) { CircularProgressIndicator(color = AccentPink) }
+            } else if (comments.isEmpty()) {
+                Box(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("No comments yet. Be the first!", color = TextSecondary, fontSize = 14.sp)
+                }
+            } else {
+                androidx.compose.foundation.lazy.LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(comments.size) { idx ->
+                        val c = comments[idx]
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            AsyncImage(
+                                model = c.user?.profilePictureUrl,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(DarkSurfaceVariant),
+                                contentScale = ContentScale.Crop
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    "@${c.user?.username ?: "user"}",
+                                    color = TextSecondary,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(c.text, color = Color.White, fontSize = 14.sp)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Comment input
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = commentText,
+                    onValueChange = { commentText = it },
+                    placeholder = { Text("Add a comment...", color = TextTertiary) },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = AccentPink,
+                        unfocusedBorderColor = DividerColor,
+                        cursorColor = AccentPink,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                    ),
+                    shape = RoundedCornerShape(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(
+                    onClick = {
+                        if (commentText.isNotBlank()) {
+                            onSendComment(commentText)
+                            commentText = ""
+                        }
+                    },
+                    enabled = commentText.isNotBlank() && !isSending
+                ) {
+                    if (isSending) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), color = AccentPink, strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.Default.Send, contentDescription = "Send", tint = AccentPink)
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }

@@ -30,6 +30,14 @@ android/build/
 android/app/build/
 android/local.properties
 android/app/google-services.json
+
+# Admin App
+admin-app/.gradle/
+admin-app/build/
+admin-app/app/build/
+admin-app/local.properties
+
+# Build artifacts
 *.apk
 *.aab
 
@@ -45,3 +53,5 @@ coverage/
 # Temp
 *.tmp
 *.swp
+test-plan.md
+test-report.md

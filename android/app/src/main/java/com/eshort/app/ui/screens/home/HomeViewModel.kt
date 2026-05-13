@@ -2,6 +2,7 @@ package com.eshort.app.ui.screens.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.eshort.app.data.model.Comment
 import com.eshort.app.data.model.Video
 import com.eshort.app.data.repository.VideoRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,7 +17,11 @@ data class HomeUiState(
     val error: String? = null,
     val currentFeed: FeedType = FeedType.FOR_YOU,
     val nextCursor: String? = null,
-    val hasMore: Boolean = true
+    val hasMore: Boolean = true,
+    val commentVideoId: String? = null,
+    val comments: List<Comment> = emptyList(),
+    val isLoadingComments: Boolean = false,
+    val isSendingComment: Boolean = false
 )
 
 enum class FeedType { FOR_YOU, FOLLOWING }
@@ -159,6 +164,55 @@ class HomeViewModel @Inject constructor(
     fun switchFeed(feedType: FeedType) {
         if (feedType != _uiState.value.currentFeed) {
             loadFeed(feedType)
+        }
+    }
+
+    fun openComments(videoId: String) {
+        _uiState.update { it.copy(commentVideoId = videoId, isLoadingComments = true, comments = emptyList()) }
+        viewModelScope.launch {
+            videoRepository.getComments(videoId).fold(
+                onSuccess = { comments ->
+                    _uiState.update { it.copy(comments = comments, isLoadingComments = false) }
+                },
+                onFailure = {
+                    _uiState.update { it.copy(isLoadingComments = false) }
+                }
+            )
+        }
+    }
+
+    fun closeComments() {
+        _uiState.update { it.copy(commentVideoId = null, comments = emptyList()) }
+    }
+
+    fun sendComment(text: String) {
+        val videoId = _uiState.value.commentVideoId ?: return
+        if (text.isBlank()) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSendingComment = true) }
+            videoRepository.addComment(videoId, text).fold(
+                onSuccess = { comment ->
+                    _uiState.update { state ->
+                        state.copy(
+                            comments = listOf(comment) + state.comments,
+                            isSendingComment = false,
+                            videos = state.videos.map {
+                                if (it.id == videoId) it.copy(commentsCount = it.commentsCount + 1)
+                                else it
+                            }
+                        )
+                    }
+                },
+                onFailure = {
+                    _uiState.update { it.copy(isSendingComment = false) }
+                }
+            )
+        }
+    }
+
+    fun saveVideo(videoId: String) {
+        viewModelScope.launch {
+            videoRepository.saveVideo(videoId)
         }
     }
 }

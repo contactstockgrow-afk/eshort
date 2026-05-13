@@ -22,8 +22,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.eshort.app.ui.theme.*
+import android.util.Log
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes
 import com.google.android.gms.common.api.ApiException
 
 @Composable
@@ -57,8 +59,22 @@ fun AuthScreen(
         val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
         try {
             val account = task.getResult(ApiException::class.java)
-            account?.idToken?.let { viewModel.signInWithGoogle(it) }
-        } catch (_: ApiException) {
+            val token = account?.idToken
+            if (token != null) {
+                viewModel.signInWithGoogle(token)
+            } else {
+                viewModel.setError("Google Sign-In failed: no ID token received")
+            }
+        } catch (e: ApiException) {
+            Log.e("AuthScreen", "Google sign in failed: code=${e.statusCode}", e)
+            val msg = when (e.statusCode) {
+                GoogleSignInStatusCodes.SIGN_IN_CANCELLED -> "Sign-in cancelled"
+                GoogleSignInStatusCodes.SIGN_IN_CURRENTLY_IN_PROGRESS -> "Sign-in already in progress"
+                GoogleSignInStatusCodes.SIGN_IN_FAILED -> "Sign-in failed. Check your Google account settings."
+                12500 -> "Google Sign-In configuration error. Please update Google Play Services."
+                else -> "Sign-in error (${e.statusCode}): ${e.message}"
+            }
+            viewModel.setError(msg)
         }
     }
 
@@ -117,7 +133,12 @@ fun AuthScreen(
             }
 
             Button(
-                onClick = { launcher.launch(googleSignInClient.signInIntent) },
+                onClick = {
+                    viewModel.clearError()
+                    googleSignInClient.signOut().addOnCompleteListener {
+                        launcher.launch(googleSignInClient.signInIntent)
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
