@@ -90,6 +90,22 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    fun createAccount(displayName: String) {
+        viewModelScope.launch(exceptionHandler) {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            authRepository.createAccountWithName(displayName).fold(
+                onSuccess = {
+                    _uiState.update { it.copy(isLoading = false) }
+                },
+                onFailure = { e ->
+                    _uiState.update {
+                        it.copy(isLoading = false, error = e.message ?: "Account creation failed")
+                    }
+                }
+            )
+        }
+    }
+
     fun signOut() {
         authRepository.signOut()
     }

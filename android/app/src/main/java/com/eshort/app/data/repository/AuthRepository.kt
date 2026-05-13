@@ -22,10 +22,34 @@ class AuthRepository @Inject constructor(
     private val _currentUser = MutableStateFlow<User?>(null)
     val currentUser: StateFlow<User?> = _currentUser
 
-    private val _isLoggedIn = MutableStateFlow(firebaseAuth.currentUser != null)
+    private val _isLoggedIn = MutableStateFlow(false)
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn
 
     val firebaseUser get() = firebaseAuth.currentUser
+
+    init {
+        if (firebaseAuth.currentUser != null) {
+            try {
+                val prefs = context.getSharedPreferences("eshort_user", Context.MODE_PRIVATE)
+                val savedName = prefs.getString("displayName", null)
+                val savedUsername = prefs.getString("username", null)
+                val savedUid = prefs.getString("uid", null)
+                val fbUser = firebaseAuth.currentUser!!
+                if (savedName != null && savedUid == fbUser.uid) {
+                    _currentUser.value = User(
+                        uid = fbUser.uid,
+                        email = fbUser.email ?: "",
+                        displayName = savedName,
+                        username = savedUsername ?: "user_${fbUser.uid.take(8)}",
+                        profilePictureUrl = fbUser.photoUrl?.toString() ?: ""
+                    )
+                    _isLoggedIn.value = true
+                }
+            } catch (e: Exception) {
+                Log.w("AuthRepository", "Failed to restore user", e)
+            }
+        }
+    }
 
     suspend fun signInWithGoogle(idToken: String): Result<User> {
         return try {
@@ -54,23 +78,41 @@ class AuthRepository @Inject constructor(
     }
 
     suspend fun signInAsGuest(): Result<User> {
+        return createAccountWithName("Guest User")
+    }
+
+    suspend fun createAccountWithName(displayName: String): Result<User> {
         return try {
             val authResult = firebaseAuth.signInAnonymously().await()
             val fbUser = authResult.user
-                ?: return Result.failure(Exception("Anonymous auth failed"))
+                ?: return Result.failure(Exception("Account creation failed"))
+
+            val safeName = displayName.ifBlank { "User" }
+            val username = safeName.lowercase().replace(" ", "_") + "_${fbUser.uid.take(6)}"
 
             val user = User(
                 uid = fbUser.uid,
                 email = "",
-                displayName = "Guest User",
-                username = "guest_${fbUser.uid.take(8)}",
-                bio = "Browsing as guest"
+                displayName = safeName,
+                username = username,
+                bio = ""
             )
             _currentUser.value = user
             _isLoggedIn.value = true
+
+            // Save name to SharedPreferences for persistence
+            try {
+                val prefs = context.getSharedPreferences("eshort_user", Context.MODE_PRIVATE)
+                prefs.edit()
+                    .putString("uid", fbUser.uid)
+                    .putString("displayName", safeName)
+                    .putString("username", username)
+                    .apply()
+            } catch (_: Exception) {}
+
             Result.success(user)
         } catch (e: Exception) {
-            Log.e("AuthRepository", "Guest sign-in failed", e)
+            Log.e("AuthRepository", "Account creation failed", e)
             Result.failure(e)
         }
     }
@@ -174,5 +216,9 @@ class AuthRepository @Inject constructor(
         firebaseAuth.signOut()
         _currentUser.value = null
         _isLoggedIn.value = false
+        try {
+            context.getSharedPreferences("eshort_user", Context.MODE_PRIVATE)
+                .edit().clear().apply()
+        } catch (_: Exception) {}
     }
 }
