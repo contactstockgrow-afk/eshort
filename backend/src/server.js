@@ -24,6 +24,14 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', app: 'Darul Uloom GPT', version: '1.0.0' });
 });
 
+// Serve frontend static files in production
+const frontendDist = path.join(__dirname, '..', '..', 'frontend', 'dist');
+app.use(express.static(frontendDist));
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api')) return next();
+  res.sendFile(path.join(frontendDist, 'index.html'));
+});
+
 async function start() {
   initDatabase();
   seedInitialContent();

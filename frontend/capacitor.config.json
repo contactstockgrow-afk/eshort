@@ -1,0 +1,13 @@
+{
+  "appId": "com.darululoom.gpt",
+  "appName": "دارالعلوم جی پی ٹی",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "buildOptions": {
+      "signingType": "apksigner"
+    }
+  }
+}
